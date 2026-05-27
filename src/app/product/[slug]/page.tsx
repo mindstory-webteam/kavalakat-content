@@ -205,7 +205,7 @@ export default function PortfolioListingPage() {
         const services: ListingItem[] = []
         let url: string | null = `${API}/services/?is_active=true`
         while (url) {
-          const res  = await fetch(url, { cache: 'no-store' })
+          const res: Response = await fetch(url, { cache: 'no-store' })
           if (!res.ok) break
           const json = await res.json()
           const items: ServiceListItem[] = Array.isArray(json?.results)
