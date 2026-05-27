@@ -193,7 +193,7 @@ const InnerPageHeader: React.FC = () => {
           let url: string | null = `${API}/services/?is_active=true`;
           const serviceItems: NavItem[] = [];
           while (url) {
-            const res  = await fetch(url, { cache: 'no-store' });
+            const res: Response = await fetch(url, { cache: 'no-store' })
             if (!res.ok) break;
             const json = await res.json();
             const items: any[] = Array.isArray(json?.results)
