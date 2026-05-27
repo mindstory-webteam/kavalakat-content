@@ -3,6 +3,7 @@
 import React, { useState } from 'react'
 import Link from 'next/link'
 import { submitEnquiry } from '@/lib/api'
+import type { EnquiryPayload } from '@/lib/api'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -58,14 +59,13 @@ const HomeContactSection = () => {
 
     setStatus('loading')
 
-    const payload: Record<string, string | boolean> = {
-      name:           form.name.trim(),
-      email:          form.email.trim(),
-      phone:          form.phone.trim(),
-      message:        form.message.trim(),
-      terms_accepted: form.terms_accepted,
+    const payload: EnquiryPayload = {
+      name:    form.name.trim(),
+      email:   form.email.trim(),
+      phone:   form.phone.trim(),
+      subject: form.subject.trim(),
+      message: form.message.trim(),
     }
-    if (form.subject.trim()) payload.subject = form.subject.trim()
 
     try {
       await submitEnquiry(payload)
