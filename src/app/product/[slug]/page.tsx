@@ -1,4 +1,3 @@
-// ✅ FILE PATH: src/app/product/page.tsx  (Portfolio Listing — Trading + Distribution + Services)
 'use client'
 
 import FooterTop from '@/components/FooterTop'
