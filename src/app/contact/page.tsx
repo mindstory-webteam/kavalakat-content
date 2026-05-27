@@ -6,7 +6,7 @@ import React, { useEffect, useState } from 'react'
 import Footer1 from '@/components/Footer'
 import Breadcrumb from '@/components/common/Breadcrumb'
 import { getContact, submitEnquiry } from '@/lib/api'
-import type { Contact } from '@/lib/api'
+import type { Contact, EnquiryPayload } from '@/lib/api'
 
 // ─── Form state ───────────────────────────────────────────────────────────────
 
@@ -16,12 +16,12 @@ interface EnquiryForm {
   phone: string
   subject: string
   message: string
-  terms_accepted: boolean   // ← FIXED: was 'accepted'
+  terms_accepted: boolean
 }
 
 const INITIAL_FORM: EnquiryForm = {
   name: '', email: '', phone: '',
-  subject: '', message: '', terms_accepted: false,  // ← FIXED: was 'accepted: false'
+  subject: '', message: '', terms_accepted: false,
 }
 
 type SubmitStatus = 'idle' | 'loading' | 'success' | 'error'
@@ -62,22 +62,17 @@ const ContactPage = () => {
     if (!form.email.trim())        { setErrorMsg('Please enter your email address.');      return }
     if (!form.phone.trim())        { setErrorMsg('Please enter your phone number.');       return }
     if (!form.message.trim())      { setErrorMsg('Please enter a message.');               return }
-    if (!form.terms_accepted)      { setErrorMsg('Please accept the Terms & Conditions.'); return }  // ← FIXED
+    if (!form.terms_accepted)      { setErrorMsg('Please accept the Terms & Conditions.'); return }
 
     setStatus('loading')
 
-    // ── Payload — exactly matches API required + optional fields ──────────
-    const payload: Record<string, string | boolean> = {
-      name:           form.name.trim(),
-      email:          form.email.trim(),
-      phone:          form.phone.trim(),
-      message:        form.message.trim(),
-      terms_accepted: form.terms_accepted,                              // ← FIXED: was 'accepted'
-    }
-
-    // subject is optional — only include if filled
-    if (form.subject.trim()) {
-      payload.subject = form.subject.trim()
+    // ── Payload — typed as EnquiryPayload, terms_accepted is UI-only ──────
+    const payload: EnquiryPayload = {
+      name:    form.name.trim(),
+      email:   form.email.trim(),
+      phone:   form.phone.trim(),
+      subject: form.subject.trim(), // required by EnquiryPayload (not optional)
+      message: form.message.trim(),
     }
 
     try {
@@ -334,8 +329,8 @@ const ContactPage = () => {
                               className="form-check-input"
                               type="checkbox"
                               id="contactCheck"
-                              name="terms_accepted"           /* ← FIXED: was 'accepted' */
-                              checked={form.terms_accepted}   /* ← FIXED: was 'form.accepted' */
+                              name="terms_accepted"
+                              checked={form.terms_accepted}
                               onChange={handleChange}
                               style={{ flexShrink: 0 }}
                             />
