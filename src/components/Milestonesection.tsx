@@ -19,7 +19,7 @@ interface Milestone {
 // ── API ───────────────────────────────────────────────────────────────────────
 
 const API_BASE =
-  (process.env.NEXT_PUBLIC_API_URL ?? "https://kavalakat-api.onrender.com/api").replace(/\/$/, "");
+  (process.env.NEXT_PUBLIC_API_URL ?? "https://api.kavalakat.com/api").replace(/\/$/, "");
 
 const FALLBACK_IMAGE = "/assets/new-images/projects/project-1.jpg";
 

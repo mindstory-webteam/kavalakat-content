@@ -88,7 +88,7 @@ const Page = () => {
       <Breadcrumb
         title="Our Projects"
         subtitle="Building Kerala's Future — Trusted by Government, Healthcare & Infrastructure Leaders."
-        image="/assets/new-images/bm/bm-2.jpeg"
+        image="/assets/new-images/new-images/about-imges/projects.webp"
       />
 
       <style>{`

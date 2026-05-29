@@ -6,6 +6,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react'
 import Footer1 from '@/components/Footer'
 import Breadcrumb from '@/components/common/Breadcrumb'
 import Image from 'next/image'
+import { useParams } from 'next/navigation'
 
 /* ─────────────────────────────────────────────────
    API TYPES
@@ -51,52 +52,48 @@ interface ServiceFeatureSection {
   updated_at: string
 }
 
-/* ── FIXED: counter field names match API serializer ── */
 interface ServiceCounter {
   id: number
   service: number
-  counter_title: string       // was: label
-  counter_number: string      // was: value
+  counter_title: string
+  counter_number: string
   short_description: string
   icon: string
   order: number
   is_active: boolean
 }
 
-/* ── FIXED: highlight field names match API serializer ── */
 interface ServiceHighlight {
   id: number
   service?: number
   section_title?: string
   section_sub_title?: string
-  highlight_title: string           // was: title
-  highlight_description: string     // was: description
-  highlight_video?: string | null   // was: video_file
-  highlight_video_url?: string | null // was: video_url
+  highlight_title: string
+  highlight_description: string
+  highlight_video?: string | null
+  highlight_video_url?: string | null
   poster?: string | null
   poster_url?: string | null
-  display_order: number             // was: order
+  display_order: number
   is_active?: boolean
 }
 
-/* ── FIXED: nearby place field names match API serializer ── */
 interface NearbyPlace {
   id: number
-  nearby_place_name: string   // was: name
+  nearby_place_name: string
   distance: string
   map_link?: string
   order?: number
 }
 
-/* ── FIXED: location field names match API serializer ── */
 interface ServiceLocation {
   id: number
   service: number
-  location_main_title: string        // was: title
-  location_main_sub_title: string    // was: address / city
-  location_main_description: string  // was: description
-  left_main_image: string | null     // was: image
-  left_main_image_url: string | null // was: image_url
+  location_main_title: string
+  location_main_sub_title: string
+  location_main_description: string
+  left_main_image: string | null
+  left_main_image_url: string | null
   nearby_places: NearbyPlace[]
   updated_at?: string
 }
@@ -131,24 +128,62 @@ interface ServiceData {
 }
 
 /* ─────────────────────────────────────────────────
-   API CONFIG  — change SERVICE_SLUG to match your route
+   API CONFIG
 ───────────────────────────────────────────────── */
-const API_BASE = 'https://api.kavalakat.com/api'
-const SERVICE_ID = 1   // ← swap to dynamic param / props as needed
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://api.kavalakat.com/api'
 
 /* ── Fallback icons when offer_icon is empty ── */
 const FALLBACK_ICONS = ['🛋️', '🍽️', '📶', '🅿️', '🏢', '🔒', '🌿', '⚡', '🎯', '🏆']
 
 /* ─────────────────────────────────────────────────
+   SLUG HELPERS  (same logic as portfolio page)
+───────────────────────────────────────────────── */
+interface PortfolioListItem {
+  id: number
+  name: string
+  slug?: string
+  description: string
+  image: string | null
+  image_url: string | null
+  category_name: string
+  category_slug: string
+  is_active: boolean
+  order: number
+}
+
+function nameToSlug(name: string) {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+}
+
+function slugMatches(item: PortfolioListItem, slug: string) {
+  return (
+    (item.slug && item.slug === slug) ||
+    (item.slug && item.slug.replace(/_/g, '-') === slug) ||
+    nameToSlug(item.name) === slug
+  )
+}
+
+/* ─────────────────────────────────────────────────
    COUNTING NUMBER HOOK
+   Reruns whenever target or shouldStart changes.
+   This handles the async case: data loads AFTER the
+   IntersectionObserver already fired, so shouldStart
+   is true but target was 0 at that point.
 ───────────────────────────────────────────────── */
 function useCountUp(target: number, duration: number = 2000, shouldStart: boolean = false) {
   const [count, setCount] = useState(0)
 
   useEffect(() => {
+    setCount(0)
+    // Only skip if not started yet — do NOT skip on target===0
+    // because target starts at 0 before API loads and we need to re-run when it changes
     if (!shouldStart) return
+
+    let cancelled = false
     let startTime: number | null = null
+
     const step = (timestamp: number) => {
+      if (cancelled) return
       if (!startTime) startTime = timestamp
       const progress = Math.min((timestamp - startTime) / duration, 1)
       const eased = 1 - Math.pow(1 - progress, 3)
@@ -157,6 +192,7 @@ function useCountUp(target: number, duration: number = 2000, shouldStart: boolea
       else setCount(target)
     }
     requestAnimationFrame(step)
+    return () => { cancelled = true }
   }, [target, duration, shouldStart])
 
   return count
@@ -172,14 +208,17 @@ function StatItem({
   delay: number
   shouldStart: boolean
 }) {
-  const [started, setStarted] = useState(false)
-  useEffect(() => {
-    if (!shouldStart) return
-    const t = setTimeout(() => setStarted(true), delay)
-    return () => clearTimeout(t)
-  }, [shouldStart, delay])
+  const [active, setActive] = useState(false)
 
-  const count = useCountUp(number, 2000, started)
+  useEffect(() => {
+    setActive(false)
+    // Do NOT guard on number===0 — API data starts at 0 and arrives later
+    if (!shouldStart) return
+    const t = setTimeout(() => setActive(true), delay)
+    return () => clearTimeout(t)
+  }, [shouldStart, delay, number]) // number in deps → re-arms when real data arrives
+
+  const count = useCountUp(number, 2000, active)
 
   return (
     <div className="alite-stat-item">
@@ -195,95 +234,184 @@ function StatItem({
    MAIN PAGE COMPONENT
 ───────────────────────────────────────────────── */
 const AliteEnclavesPage = () => {
+  const params = useParams()
+  const slug   = params?.slug as string
 
   /* ── API State ── */
   const [serviceData, setServiceData] = useState<ServiceData | null>(null)
-  const [apiLoading, setApiLoading] = useState<boolean>(true)
-  const [apiError, setApiError] = useState<string | null>(null)
+  const [apiLoading,  setApiLoading]  = useState<boolean>(true)
+  const [apiError,    setApiError]    = useState<string | null>(null)
 
   /* ── UI State ── */
-  const [currentSlide, setCurrentSlide] = useState<number>(0)
+  const [currentSlide,    setCurrentSlide]    = useState<number>(0)
   const [activeAccordion, setActiveAccordion] = useState<string | null>(null)
-  const [activeVideo, setActiveVideo] = useState<number>(0)
-  const [isPlaying, setIsPlaying] = useState<boolean>(true)
-  const [currentTime, setCurrentTime] = useState<number>(0)
-  const [duration, setDuration] = useState<number>(0)
-  const [progress, setProgress] = useState<number>(0)
-  const [isMuted, setIsMuted] = useState<boolean>(true)
-  const [statsVisible, setStatsVisible] = useState<boolean>(false)
+  const [activeVideo,     setActiveVideo]     = useState<number>(0)
+  const [isPlaying,       setIsPlaying]       = useState<boolean>(true)
+  const [currentTime,     setCurrentTime]     = useState<number>(0)
+  const [duration,        setDuration]        = useState<number>(0)
+  const [progress,        setProgress]        = useState<number>(0)
+  const [isMuted,         setIsMuted]         = useState<boolean>(true)
+  const [statsVisible,    setStatsVisible]    = useState<boolean>(false)
 
-  const videoRef = useRef<HTMLVideoElement>(null)
-  const autoSlideRef = useRef<NodeJS.Timeout | null>(null)
-  const statsRef = useRef<HTMLDivElement>(null)
+  const videoRef      = useRef<HTMLVideoElement>(null)
+  const autoSlideRef  = useRef<NodeJS.Timeout | null>(null)
+  const statsRef      = useRef<HTMLDivElement>(null)
 
   /* ─────────────────────────────────────────────────
-     FETCH SERVICE DATA
+     FETCH
+     Strategy:
+       1. Try direct detail endpoints first (fastest, no list needed)
+       2. Fall back to list endpoints → find by slug → fetch detail by id
   ───────────────────────────────────────────────── */
   useEffect(() => {
+    if (!slug) return
+
     const fetchService = async () => {
       try {
         setApiLoading(true)
-        const res = await fetch(`${API_BASE}/services/${SERVICE_ID}/full/`)
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        const json = await res.json()
-        setServiceData(json.success ? json.data : json)
+        setApiError(null)
+
+        // ── Helper: unwrap { success, data } envelope ──────────────────
+        const unwrap = (json: any) => json?.data ?? json
+
+        // ── Helper: extract a flat list from any list-shaped response ──
+        const extractList = (json: any): PortfolioListItem[] => {
+          const payload = unwrap(json)
+          if (Array.isArray(payload)) return payload
+          // portfolio/page/ shape: { trading, distribution, services, ... }
+          // Also handle any unknown keys that contain arrays
+          const lists: PortfolioListItem[] = []
+          if (typeof payload === 'object' && payload !== null) {
+            for (const key of Object.keys(payload)) {
+              if (Array.isArray(payload[key])) {
+                lists.push(...payload[key])
+              }
+            }
+          }
+          return lists
+        }
+
+        // ── Step 1: Try direct slug-based detail endpoints ─────────────
+        // These avoid the list lookup entirely
+        const directUrls = [
+          `${API_BASE}/services/${slug}/`,
+          `${API_BASE}/portfolio/items/${slug}/`,
+        ]
+
+        for (const url of directUrls) {
+          try {
+            const res = await fetch(url, { cache: 'no-store' })
+            if (!res.ok) continue
+            const json = await res.json()
+            const payload = unwrap(json)
+            if (payload?.id) {
+              setServiceData(payload as ServiceData)
+              return
+            }
+          } catch { /* try next */ }
+        }
+
+        // ── Step 2: Search across list endpoints ───────────────────────
+        // Try each list source; on a hit, fetch detail by numeric id
+        const listUrls = [
+          `${API_BASE}/portfolio/page/`,
+          `${API_BASE}/services/`,
+          `${API_BASE}/portfolio/items/`,
+          `${API_BASE}/portfolio/`,
+        ]
+
+        let matchId: number | null = null
+
+        for (const url of listUrls) {
+          try {
+            const res = await fetch(url, { cache: 'no-store' })
+            if (!res.ok) continue
+            const json = await res.json()
+            const items = extractList(json)
+            const found = items.find(i => slugMatches(i, slug))
+            if (found) { matchId = found.id; break }
+          } catch { /* try next */ }
+        }
+
+        if (matchId === null) throw new Error(`Could not find item with slug: "${slug}"`)
+
+        // ── Step 3: Fetch full detail by numeric id ────────────────────
+        const detailUrls = [
+          `${API_BASE}/services/${matchId}/`,
+          `${API_BASE}/portfolio/items/${matchId}/`,
+        ]
+
+        for (const url of detailUrls) {
+          try {
+            const res = await fetch(url, { cache: 'no-store' })
+            if (!res.ok) continue
+            const json = await res.json()
+            const payload = unwrap(json)
+            if (payload?.id) {
+              setServiceData(payload as ServiceData)
+              return
+            }
+          } catch { /* try next */ }
+        }
+
+        throw new Error(`Detail fetch failed for id: ${matchId}`)
+
       } catch (err: unknown) {
+        console.error('AliteEnclavesPage fetch error:', err)
         setApiError(err instanceof Error ? err.message : 'Failed to load')
       } finally {
         setApiLoading(false)
       }
     }
+
     fetchService()
-  }, [])
+  }, [slug])
 
   /* ─────────────────────────────────────────────────
      DERIVED DATA FROM API
   ───────────────────────────────────────────────── */
-  const offers         = serviceData?.offers ?? []
-  const counters       = serviceData?.counters ?? []
+  const offers         = serviceData?.offers         ?? []
+  const counters       = (serviceData?.counters ?? []).filter(c => c.is_active)
   const featureSection = serviceData?.feature_section ?? null
-  const features       = featureSection?.features ?? []
-  const highlights     = serviceData?.highlights ?? []
-  const location       = serviceData?.location ?? null
-  const nearbyPlaces   = location?.nearby_places ?? []
+  const features       = featureSection?.features     ?? []
+  const highlights     = serviceData?.highlights      ?? []
+  const location       = serviceData?.location        ?? null
+  const nearbyPlaces   = location?.nearby_places      ?? []
 
   /* ─────────────────────────────────────────────────
      VIDEOS — built from API highlights[]
-     FIXED: uses highlight_video_url / highlight_video
-            and highlight_title / highlight_description
   ───────────────────────────────────────────────── */
   const STATIC_VIDEOS = [
     {
       src: '/assets/video/home5-video.mp4',
-      poster: '/assets/new-images/bm/bm-Alite-Enclaves.png',
+      poster: '/assets/new-images/new-images/about-imges/img-1.webp',
       title: 'Welcome to Alite Enclaves',
       tag: 'Property Tour',
       desc: 'Take a full walkthrough of our premium service apartments, villas, and common areas in the heart of Thrissur.',
     },
     {
       src: '/assets/video/metal-industry.mp4',
-      poster: '/assets/new-images/products/p-2.jpeg',
+      poster: '/assets/new-images/new-images/about-imges/img-1.webp',
       title: 'Our Premium Room Experience',
       tag: 'Room Tour',
       desc: 'Explore our fully air-conditioned premium rooms with modern furnishings and en-suite bathrooms.',
     },
     {
       src: '/assets/video/oil-and-gas.mp4',
-      poster: '/assets/new-images/products/p-3.jpeg',
+      poster: '/assets/new-images/new-images/about-imges/img-1.webp',
       title: 'Family Villa — 4 BHK Tour',
       tag: 'Villa Tour',
       desc: 'Discover the expansive 4 BHK villa offering maximum space, privacy, and luxury for large families.',
     },
     {
       src: '/kavalakat/public/assets/video/renovation.mp4',
-      poster: '/assets/new-images/products/p-1.jpeg',
+      poster: '/assets/new-images/new-images/about-imges/img-1.webp',
       title: 'Location & Surroundings',
       tag: 'Location',
       desc: 'See our prime Thrissur city location — minutes from the Railway Station, Bus Stand, and Vadakkumnathan Temple.',
     },
   ]
 
-  /* ── FIXED: map API highlight fields correctly ── */
   const apiVideos = highlights
     .filter((h) => !!(h.highlight_video_url || h.highlight_video))
     .map((h) => ({
@@ -349,7 +477,6 @@ const AliteEnclavesPage = () => {
   const accordionItems = features.length > 0
     ? features.map((f) => ({ id: `f${f.id}`, title: f.feature_title, content: f.feature_description || '—' }))
     : highlights.length > 0
-      /* ── FIXED: use highlight_title / highlight_description ── */
       ? highlights.map((h) => ({ id: `h${h.id}`, title: h.highlight_title, content: h.highlight_description || '—' }))
       : [
           { id: 'a1', title: 'Service Apartments (1 BHK & 2 BHK)', content: 'Fully furnished apartments with separate living and sleeping areas, private kitchenette, washing machine, satellite TV, and balcony with city views — ideal for long-stay guests and families.' },
@@ -359,7 +486,7 @@ const AliteEnclavesPage = () => {
         ]
 
   /* ─────────────────────────────────────────────────
-     LOCATION ITEMS — FIXED: use nearby_place_name
+     LOCATION ITEMS
   ───────────────────────────────────────────────── */
   const locationItems = nearbyPlaces.length > 0
     ? nearbyPlaces.map((p) => ({ place: p.nearby_place_name, dist: p.distance }))
@@ -373,55 +500,65 @@ const AliteEnclavesPage = () => {
       ]
 
   /* ─────────────────────────────────────────────────
-     STATS — FIXED: use counter_number / counter_title
+     STATS — parse counter_number safely, strip non-numeric suffix
+     e.g. "200+" → number=200, suffix="+"
+          "100%"  → number=100, suffix="%"
+          "24/7"  → number=24,  suffix="/7"
   ───────────────────────────────────────────────── */
   const statItems = counters.length > 0
-    ? counters.map((c, i) => ({
-        number: parseInt(c.counter_number) || 0,
-        suffix: '',
-        label: c.counter_title?.toUpperCase() || '',
-        delay: i * 200,
-      }))
+    ? counters.map((c, i) => {
+        const raw    = (c.counter_number ?? '').trim()
+        const num    = parseInt(raw.replace(/[^0-9]/g, ''), 10) || 0
+        // Suffix = everything after the leading digits
+        const suffix = raw.replace(/^\d+/, '')
+        return {
+          number: num,
+          suffix,
+          label: (c.counter_title ?? '').toUpperCase(),
+          delay: i * 200,
+        }
+      })
     : [
-        { number: 4,   suffix: '+',  label: 'ROOM CATEGORIES',   delay: 0   },
-        { number: 100, suffix: '%',  label: 'GUEST SATISFACTION', delay: 200 },
-        { number: 24,  suffix: '/7', label: 'FRONT DESK SUPPORT', delay: 400 },
-        { number: 5,   suffix: '★',  label: 'GUEST EXPERIENCE',   delay: 600 },
+        { number: 4,   suffix: '+',  label: 'ROOM CATEGORIES',    delay: 0   },
+        { number: 100, suffix: '%',  label: 'GUEST SATISFACTION',  delay: 200 },
+        { number: 24,  suffix: '/7', label: 'FRONT DESK SUPPORT',  delay: 400 },
+        { number: 5,   suffix: '★',  label: 'GUEST EXPERIENCE',    delay: 600 },
       ]
 
   /* ─────────────────────────────────────────────────
      PAGE META from API
   ───────────────────────────────────────────────── */
-  const pageTitle           = serviceData?.name ?? 'Alite Enclaves'
+  const pageTitle           = serviceData?.name        ?? 'Alite Enclaves'
   const pageSubtitle        = serviceData?.description ?? 'Premium Service Apartments in the Heart of Thrissur'
-  const pageBreadcrumbImage = serviceData?.image_url ?? '/assets/new-images/bm/bm-Alite-Enclaves.png'
+  const pageBreadcrumbImage = serviceData?.image_url   ?? '/assets/new-images/new-images/about-imges/img-1.webp'
 
   /* ─────────────────────────────────────────────────
      HERO SECTION DATA from API
   ───────────────────────────────────────────────── */
   const heroCategory = serviceData?.category_detail?.name ?? 'Kavalakat Hospitality'
-  const heroTitle    = serviceData?.name ?? 'Your Home Away from Home in Thrissur'
-  const heroDesc1    = serviceData?.description ?? 'Alite Enclaves is a premium hospitality venture by the Kavalakat Group, offering fully furnished Service Apartments, Premium Rooms, Villas, and a Mini Meeting Hall in the heart of Thrissur, Kerala.'
-  const heroDesc2    = serviceData?.about?.description ?? 'Strategically located near Thrissur Railway Station, Sakthan Thampuran Bus Stand, and Vadakkumnathan Temple — ideal for families, pilgrims, business travelers, and long-stay guests.'
+  const heroTitle    = serviceData?.name                  ?? 'Your Home Away from Home in Thrissur'
+  const heroDesc1    = serviceData?.description           ?? 'Alite Enclaves is a premium hospitality venture by the Kavalakat Group, offering fully furnished Service Apartments, Premium Rooms, Villas, and a Mini Meeting Hall in the heart of Thrissur, Kerala.'
+  const heroDesc2    = serviceData?.about?.description    ?? 'Strategically located near Thrissur Railway Station, Sakthan Thampuran Bus Stand, and Vadakkumnathan Temple — ideal for families, pilgrims, business travelers, and long-stay guests.'
 
   /* ─────────────────────────────────────────────────
      FAQ SECTION TITLE from API feature_section
   ───────────────────────────────────────────────── */
-  const faqSectionTitle = featureSection?.section_title ?? 'Room & Stay Options'
-  const faqSectionDesc  = featureSection?.main_description ?? ''
-  const faqSectionImage = featureSection?.left_main_image_url ?? '/assets/new-images/about-page/steel/steel-prodect-page.png'
+  const faqSectionTitle = featureSection?.section_title          ?? 'Room & Stay Options'
+  const faqSectionDesc  = featureSection?.main_description       ?? ''
+  const faqSectionImage = featureSection?.left_main_image_url    ?? '/assets/new-images/new-images/about-imges/img-1.webp'
 
   /* ─────────────────────────────────────────────────
-     LOCATION SECTION — FIXED: use location_main_* and left_main_image_url
+     LOCATION SECTION
   ───────────────────────────────────────────────── */
   const locationBadge = location?.location_main_sub_title ?? location?.location_main_title ?? 'Thrissur City Centre'
-  const locationImage = location?.left_main_image_url ?? '/assets/new-images/products/p-1.jpeg'
-  const locationTitle = location?.location_main_title ?? 'Perfectly Positioned in Thrissur'
+  const locationImage = location?.left_main_image_url     ?? '/assets/new-images/new-images/about-imges/img-1.webp'
+  const locationTitle = location?.location_main_title     ?? 'Perfectly Positioned in Thrissur'
   const locationDesc  = location?.location_main_description ?? 'Alite Enclaves enjoys a prime location in Thrissur city, placing guests within minutes of major landmarks, transport hubs, and cultural destinations.'
 
   /* ─────────────────────────────────────────────────
      VIDEO / INTERSECTION / SLIDE LOGIC (unchanged)
   ───────────────────────────────────────────────── */
+  // Primary: IntersectionObserver fires when stats bar scrolls into view
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -430,11 +567,21 @@ const AliteEnclavesPage = () => {
           observer.disconnect()
         }
       },
-      { threshold: 0.3 }
+      { threshold: 0.1 } // lowered from 0.3 — easier to trigger
     )
     if (statsRef.current) observer.observe(statsRef.current)
     return () => observer.disconnect()
   }, [])
+
+  // Fallback: if stats bar is already in viewport when API data finally arrives,
+  // the IntersectionObserver won't fire again — so force-check on data load
+  useEffect(() => {
+    if (!serviceData || statsVisible) return
+    if (!statsRef.current) return
+    const rect = statsRef.current.getBoundingClientRect()
+    const inView = rect.top < window.innerHeight && rect.bottom > 0
+    if (inView) setStatsVisible(true)
+  }, [serviceData]) // runs every time API data changes
 
   const formatTime = (secs: number): string => {
     if (!secs || isNaN(secs)) return '0:00'
@@ -551,7 +698,7 @@ const AliteEnclavesPage = () => {
   )
 
   /* ─────────────────────────────────────────────────
-     RENDER — identical structure to original
+     RENDER
   ───────────────────────────────────────────────── */
   return (
     <>
@@ -970,33 +1117,6 @@ const AliteEnclavesPage = () => {
         </div>
       </div>
 
-      {/* ── Section 8: CTA ── */}
-      {/* <div className="alite-cta-section mb-120">
-        <div className="container">
-          <div className="alite-cta-wrap">
-            <div className="row align-items-center gy-4">
-              <div className="col-lg-8">
-                <span className="alite-cta-tag">Ready to Book?</span>
-                <h2 className="alite-cta-title">Experience Premium Comfort at Alite Enclaves</h2>
-                <p className="alite-cta-desc">Contact us today to check availability, get a quote, or make a reservation for your stay in Thrissur.</p>
-              </div>
-              <div className="col-lg-4 text-lg-end">
-                <Link className="primary-btn1 black-bg" href="/contact">
-                  <span>Contact Us Now</span>
-                  <span>Contact Us Now</span>
-                  <svg className="arrow" width={23} height={23} viewBox="0 0 23 23" xmlns="http://www.w3.org/2000/svg">
-                    <g>
-                      <path d="M0.113861 0H22.9999V4.28425L4.32671 22.9997L0 18.7154L12.7524 6.08815L0.113861 6.20089V0Z" />
-                      <path d="M23 22.9996V8.56848L16.8516 14.6566V22.9996H23Z" />
-                    </g>
-                  </svg>
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div> */}
-
       <style>{`
         /* ── GLOBAL: Zero border-radius for this page ── */
         .alite-hero-img-grid,
@@ -1171,13 +1291,6 @@ const AliteEnclavesPage = () => {
         .alite-video-dot { width: 10px; height: 10px; background: rgba(255,255,255,0.2); border: none; padding: 0; cursor: pointer; transition: background 0.2s; }
         .alite-video-dot.active { background: #fff; }
 
-        /* ── CTA ── */
-        .alite-cta-section { background: #fff; }
-        .alite-cta-wrap { background: #000; padding: 60px 56px; }
-        .alite-cta-tag { display: inline-block; background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.7); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; padding: 5px 14px; margin-bottom: 16px; font-family: var(--font-manrope); }
-        .alite-cta-title { color: #fff; font-size: 2rem; font-weight: 800; margin-bottom: 12px; line-height: 1.3; font-family: var(--font-manrope); }
-        .alite-cta-desc { color: rgba(255,255,255,0.6); margin: 0; line-height: 1.7; font-size: 0.95rem; }
-
         /* ── Animations ── */
         .testimonial-card { animation: fadeSlide 0.6s ease; }
         @keyframes fadeSlide { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
@@ -1193,7 +1306,6 @@ const AliteEnclavesPage = () => {
           .alite-stat-item:nth-child(2) { border-right: none; }
           .alite-stat-item:nth-child(3) { border-top: 1px solid rgba(255,255,255,0.08); }
           .alite-location-content { padding: 40px 30px; }
-          .alite-cta-wrap { padding: 48px 36px; }
         }
         @media (max-width: 768px) {
           .alite-video-sidebar { flex-direction: column; }
@@ -1201,8 +1313,6 @@ const AliteEnclavesPage = () => {
           .alite-stat-number { font-size: 2.8rem; }
           .alite-img-main { height: 220px; }
           .alite-img-small { height: 130px; }
-          .alite-cta-wrap { padding: 36px 24px; }
-          .alite-cta-title { font-size: 1.5rem; }
           .alite-location-img { min-height: 300px; }
           .alite-video-title-bar { display: none; }
           .alite-video-section { padding: 60px 0; }

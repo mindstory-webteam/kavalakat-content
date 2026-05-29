@@ -17,7 +17,7 @@ const OurProcessPage:React.FC = () => {
     return (
         <>
             <InnerPageHeader />
-            <Breadcrumb title="Our Process" subtitle="Our Process Flow Step From Concept To Execution" image='/assets/new-images/bm/bm-1.png' />
+            <Breadcrumb title="Our Process" subtitle="Our Process Flow Step From Concept To Execution" image='/assets/new-images/new-images/about-imges/process-img.webp' />
             <HomeProcessSection addClass="pt-120" />
             <SalesNetworkSection />
             {/* <div className="our-process-page mb-120">

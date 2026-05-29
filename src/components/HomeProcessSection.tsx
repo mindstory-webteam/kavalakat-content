@@ -29,7 +29,7 @@ interface Strength {
 
 const API_BASE =
     process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ||
-    "https://kavalakat-api.onrender.com/api";
+    "https://api.kavalakat.com/api";
 
 async function fetchStrengths(): Promise<Strength[]> {
     try {

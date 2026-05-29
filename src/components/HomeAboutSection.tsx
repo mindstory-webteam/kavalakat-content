@@ -96,7 +96,7 @@ directly to major infrastructure projects across Kerala.
     <Image 
         width={750} 
         height={580} 
-        src="/assets/new-images/blog/cement-grade/b-2.png" 
+        src="/assets/new-images/new-images/home-about.webp" 
         alt="About Kavalakat"
         style={{ width: "100%", height: "auto" }}
     />

@@ -123,7 +123,7 @@ export default function BlogGridPage() {
   return (
     <>
       <InnerPageHeader />
-      <Breadcrumb title="Blog Grid" subtitle="Market Trend & Analyst Behind The Scene Of Industry." />
+      <Breadcrumb title="Blog Grid" subtitle="Market Trend & Analyst Behind The Scene Of Industry." image='/assets/new-images/new-images/about-imges/mailstone.webp' />
       <div className="blog-grid-page pt-120 mb-120" id="scroll-section">
         <div className="container">
           <div className="row gy-5 mb-70">

@@ -42,7 +42,7 @@ function toSlug(s: string): string {
     .replace(/^-|-$/g, "");
 }
 
-const FALLBACK_IMG = "/assets/new-images/products/p-1.jpeg";
+const FALLBACK_IMG = "/assets/new-images/new-images/about-imges/img-1.webp";
 
 // Resolve image URL — handles relative paths, all common field names
 function resolveImage(raw: any): string {

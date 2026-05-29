@@ -19,7 +19,7 @@ const OurProcessPage:React.FC = () => {
     return (
         <>
             <InnerPageHeader />
-            <Breadcrumb title="Our Milestones" subtitle="Our Process Flow Step From Concept To Execution" image='/assets/new-images/bm/bm-1.png' />
+            <Breadcrumb title="Our Milestones" subtitle="Our Process Flow Step From Concept To Execution" image='/assets/new-images/new-images/about-imges/mailstone.webp' />
             
 <MilestoneSection />
 

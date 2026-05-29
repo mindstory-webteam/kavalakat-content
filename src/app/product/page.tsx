@@ -92,7 +92,7 @@ const ArrowSvgSm = () => (
 const ProductCard = ({ href, src, alt, title, desc, delay }: {
   href: string; src: string; alt: string; title: string; desc: string; delay: string
 }) => {
-  const [imgSrc, setImgSrc] = useState(src || '/assets/new-images/products/p-1.jpeg')
+  const [imgSrc, setImgSrc] = useState(src || '/assets/new-images/new-images/about-imges/img-1.webp')
 
   return (
     <div className="pg-card wow animate fadeInDown" data-wow-delay={delay} data-wow-duration="1500ms">
@@ -102,7 +102,7 @@ const ProductCard = ({ href, src, alt, title, desc, delay }: {
           src={imgSrc}
           alt={alt || 'Product image'}
           style={{ objectFit: 'cover', width: '100%', height: '100%' }}
-          onError={() => setImgSrc('/assets/new-images/products/p-1.jpeg')}
+          onError={() => setImgSrc('/assets/new-images/new-images/about-imges/img-1.webp')}
         />
         <Link href={href} className="pg-card-arrow"><ArrowSvg /></Link>
       </div>

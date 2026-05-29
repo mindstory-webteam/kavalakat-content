@@ -53,7 +53,7 @@ const HomeWhyChooseUsSection: React.FC = () => {
                 <img
                   width={283}
                   height={171}
-                  src="/assets/new-images/about-page/Choice-Industry/pc-1.jpg"
+                  src="/assets/new-images/new-images/about-imges/img-1.webp"
                   alt="choose-img1"
                 />
                 Decades of hands-on experience enable us to manage large volumes efficiently without compromising speed or accuracy.
@@ -74,7 +74,7 @@ const HomeWhyChooseUsSection: React.FC = () => {
                 <img
                   width={283}
                   height={171}
-                  src="/assets/new-images/about-page/Choice-Industry/pc-2.jpg"
+                  src="/assets/new-images/new-images/about-imges/img-2.webp"
                   alt="choose-img2"
                 />
                 Our clearly defined processes ensure smooth coordination from material sourcing to final site delivery.
@@ -95,7 +95,7 @@ const HomeWhyChooseUsSection: React.FC = () => {
                 <img
                   width={283}
                   height={171}
-                  src="/assets/new-images/about-page/Choice-Industry/pc-3.jpg"
+                  src="/assets/new-images/new-images/about-imges/img-3.webp"
                   alt="choose-img3"
                 />
               Every stage of our workflow follows strict quality checks, ensuring only certified and reliable materials reach your project.
@@ -116,7 +116,7 @@ const HomeWhyChooseUsSection: React.FC = () => {
                 <img
                   width={283}
                   height={171}
-                  src="/assets/new-images/about-page/Choice-Industry/pc-4.jpg"
+                  src="/assets/new-images/new-images/about-imges/img-4.webp"
                   alt="choose-img4"
                 />
                 Integrated logistics planning and crane-assisted operations help reduce delays and keep construction schedules on track.
@@ -137,7 +137,7 @@ const HomeWhyChooseUsSection: React.FC = () => {
                 <img
                   width={283}
                   height={171}
-                  src="/assets/new-images/about-page/Choice-Industry/pc-5.jpg"
+                  src=" /assets/new-images/new-images/about-imges/img-5.webp"
                   alt="choose-img5"
                 />
                Whether for small orders or large projects, our workflow is built to deliver consistent performance and dependable supply.

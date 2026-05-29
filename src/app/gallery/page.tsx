@@ -29,7 +29,7 @@ type GalleryApiResponse =
     | { data: GalleryItem[]; success: boolean; pagination: unknown }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://kavalakat-api.onrender.com/api'
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://api.kavalakat.com/api'
 const DELAYS = ['200ms', '400ms', '600ms', '800ms', '800ms', '600ms']
 const IMAGES_PER_PAGE = 6
 
@@ -92,7 +92,7 @@ const GalleryPage = () => {
             <Breadcrumb
                 title="Gallery"
                 subtitle="Explore Our Collection of Industrial & Manufacturing Excellence."
-                image="/assets/new-images/bm/bm-3.jpeg"
+                image="/assets/new-images/new-images/about-imges/gallery.webp"
             />
 
             <div className="gallery-page pt-120 mb-120" id="gallery-section">

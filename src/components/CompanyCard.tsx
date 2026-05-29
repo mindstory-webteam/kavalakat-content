@@ -8,7 +8,7 @@ interface CompanyCardProps {
   description: string;
 }
 
-const LOGO_FALLBACK = '/assets/new-images/products/p-1.jpeg'
+const LOGO_FALLBACK = '/assets/new-images/new-images/about-imges/img-1.webp'
 
 function cleanLogoSrc(src: string): string {
   const s = (src || '').trim()

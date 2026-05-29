@@ -19,7 +19,7 @@ interface AboutData {
 // ── API Base ──────────────────────────────────────────────────────────────────
 
 const API_BASE = (
-  process.env.NEXT_PUBLIC_REACT_APP_API_URL ?? "https://kavalakat-api.onrender.com/api"
+  process.env.NEXT_PUBLIC_REACT_APP_API_URL ?? "https://api.kavalakat.com/api"
 ).replace(/\/$/, "");
 
 // ── Fetcher ───────────────────────────────────────────────────────────────────
@@ -68,7 +68,7 @@ const STATIC_PARA_2 = `Kavalakat Group is one of Kerala's foremost construction 
 
 const STATIC_VISION  = "To be the most preferred service provider of the construction industry in India.";
 const STATIC_MISSION = "To achieve customer satisfaction through quality products, on-time delivery, and competitive pricing.";
-const STATIC_IMAGE   = "/assets/new-images/about-page/banner/b-2.jpeg";
+const STATIC_IMAGE   = "/assets/new-images/new-images/about-banner.webp";
 
 // ── Component ─────────────────────────────────────────────────────────────────
 

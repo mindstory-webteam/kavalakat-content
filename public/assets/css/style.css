@@ -2516,12 +2516,14 @@ header.style-1 .main-menu > ul > li > a {
 @media (max-width: 1399px) {
   header.style-1 .main-menu > ul > li > a {
     padding: 10px 15px;
+    color: #000000;
   }
 }
 @media (min-width: 992px) and (max-width: 1199px) {
   header.style-1 .main-menu > ul > li > a {
     font-size: 12px;
     padding: 9px 10px;
+     color: #000000;
   }
 }
 header.style-1 .main-menu > ul > li > a svg {

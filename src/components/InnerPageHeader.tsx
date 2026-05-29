@@ -8,13 +8,9 @@ import type { Contact, PortfolioItem } from "@/lib/api";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "https://api.kavalakat.com/api";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 interface NavItem    { name: string; href: string }
 interface NavGroups  { trading: NavItem[]; distribution: NavItem[]; services: NavItem[] }
 interface BlogNavItem { title: string; slug: string }
-
-// ─── Unwrap { success: true, data: ... } envelope ────────────────────────────
 
 function unwrapEnvelope(json: any): any {
   if (json !== null && typeof json === "object" && !Array.isArray(json) && "success" in json && "data" in json) {
@@ -23,13 +19,9 @@ function unwrapEnvelope(json: any): any {
   return json;
 }
 
-// ─── Services slug helper ─────────────────────────────────────────────────────
-
 function toSlug(s: string): string {
   return (s || '').toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 }
-
-// ─── State & Reducer ──────────────────────────────────────────────────────────
 
 interface State {
   activeMenu: string;
@@ -85,8 +77,6 @@ function reducer(state: State, action: Action): State {
   }
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
-
 const InnerPageHeader: React.FC = () => {
   const [state, dispatch] = useReducer(reducer, initialState);
   const [navItems,    setNavItems]    = useState<NavGroups>({ trading: [], distribution: [], services: [] });
@@ -94,52 +84,33 @@ const InnerPageHeader: React.FC = () => {
   const [contactInfo, setContactInfo] = useState<Contact | null>(null);
   const pathname = usePathname();
 
-  // ── Fetch contact info ────────────────────────────────────────────────────
   useEffect(() => {
-    getContact().then((data) => {
-      if (data) setContactInfo(data);
-    });
+    getContact().then((data) => { if (data) setContactInfo(data); });
   }, []);
 
-  // ── Fetch blog posts for nav ──────────────────────────────────────────────
   useEffect(() => {
     const loadBlog = async () => {
       try {
         const res = await fetch(`${API}/blog/?page_size=6&status=published`);
         if (!res.ok) return;
         const json = await res.json();
-
         let posts: any[] = [];
-        if (json.success !== undefined) {
-          posts = json.data ?? [];
-        } else if (Array.isArray(json)) {
-          posts = json;
-        } else if (json.results) {
-          posts = json.results;
-        }
-
-        const items: BlogNavItem[] = posts
-          .filter((p: any) => p.slug && p.title)
-          .slice(0, 6)
-          .map((p: any) => ({ title: p.title, slug: p.slug }));
-
-        setBlogNav(items);
-      } catch {
-        // silently ignore
-      }
+        if (json.success !== undefined) { posts = json.data ?? []; }
+        else if (Array.isArray(json)) { posts = json; }
+        else if (json.results) { posts = json.results; }
+        setBlogNav(posts.filter((p: any) => p.slug && p.title).slice(0, 6).map((p: any) => ({ title: p.title, slug: p.slug })));
+      } catch {}
     };
     loadBlog();
   }, []);
 
-  // ── Fetch portfolio (trading + distribution) + services nav ──────────────
   useEffect(() => {
     const load = async () => {
       try {
-        const trading:      NavItem[] = [];
+        const trading: NavItem[] = [];
         const distribution: NavItem[] = [];
-        const services:     NavItem[] = [];
+        const services: NavItem[] = [];
 
-        // ── 1. Portfolio items (trading + distribution) ──────────────────
         try {
           const res = await fetch(`${API}/portfolio/page/`);
           if (res.ok) {
@@ -147,60 +118,40 @@ const InnerPageHeader: React.FC = () => {
             const page = unwrapEnvelope(json);
             const hasData = page?.trading?.length || page?.distribution?.length;
             if (hasData) {
-              (page.trading ?? []).forEach((i: PortfolioItem) => {
-                const n = normalisePortfolioItem(i);
-                trading.push({ name: n.name, href: buildPortfolioHref(n) });
-              });
-              (page.distribution ?? []).forEach((i: PortfolioItem) => {
-                const n = normalisePortfolioItem(i);
-                distribution.push({ name: n.name, href: buildPortfolioHref(n) });
-              });
-              // Also pull any services the portfolio/page endpoint still returns
-              (page.services ?? []).forEach((i: PortfolioItem) => {
-                const n = normalisePortfolioItem(i);
-                services.push({ name: n.name, href: buildPortfolioHref(n) });
-              });
+              (page.trading ?? []).forEach((i: PortfolioItem) => { const n = normalisePortfolioItem(i); trading.push({ name: n.name, href: buildPortfolioHref(n) }); });
+              (page.distribution ?? []).forEach((i: PortfolioItem) => { const n = normalisePortfolioItem(i); distribution.push({ name: n.name, href: buildPortfolioHref(n) }); });
+              (page.services ?? []).forEach((i: PortfolioItem) => { const n = normalisePortfolioItem(i); services.push({ name: n.name, href: buildPortfolioHref(n) }); });
             }
           }
-        } catch { /* fall through */ }
+        } catch {}
 
-        // If portfolio/page returned nothing, try flat items list
         if (!trading.length && !distribution.length) {
           try {
-            const res  = await fetch(`${API}/portfolio/items/`);
+            const res = await fetch(`${API}/portfolio/items/`);
             if (res.ok) {
               const json = await res.json();
               const data = unwrapEnvelope(json);
               const allItems: any[] = Array.isArray(data) ? data : (data.results ?? data.items ?? []);
-              allItems
-                .filter((i: any) => i.is_active !== false)
-                .sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0))
-                .forEach((item: any) => {
-                  const n    = normalisePortfolioItem(item);
-                  const href = buildPortfolioHref(n);
-                  const entry = { name: n.name, href };
-                  if (href.startsWith('/product/'))           trading.push(entry);
-                  else if (href.startsWith('/distribution/')) distribution.push(entry);
-                  else if (href.startsWith('/services/'))     services.push(entry);
-                });
+              allItems.filter((i: any) => i.is_active !== false).sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0)).forEach((item: any) => {
+                const n = normalisePortfolioItem(item);
+                const href = buildPortfolioHref(n);
+                const entry = { name: n.name, href };
+                if (href.startsWith('/product/')) trading.push(entry);
+                else if (href.startsWith('/distribution/')) distribution.push(entry);
+                else if (href.startsWith('/services/')) services.push(entry);
+              });
             }
-          } catch { /* silently ignore */ }
+          } catch {}
         }
 
-        // ── 2. Services from new /api/services/ endpoint ─────────────────
-        // Always fetch — authoritative source for services column
         try {
           let url: string | null = `${API}/services/?is_active=true`;
           const serviceItems: NavItem[] = [];
           while (url) {
-            const res: Response = await fetch(url, { cache: 'no-store' })
+            const res: Response = await fetch(url, { cache: 'no-store' });
             if (!res.ok) break;
             const json = await res.json();
-            const items: any[] = Array.isArray(json?.results)
-              ? json.results
-              : Array.isArray(json?.data)
-                ? json.data
-                : Array.isArray(json) ? json : [];
+            const items: any[] = Array.isArray(json?.results) ? json.results : Array.isArray(json?.data) ? json.data : Array.isArray(json) ? json : [];
             items.forEach((svc: any) => {
               if (svc.is_active === false) return;
               const slug = svc.slug || toSlug(svc.name);
@@ -208,32 +159,18 @@ const InnerPageHeader: React.FC = () => {
             });
             url = json?.next ?? null;
           }
-          if (serviceItems.length) {
-            // Replace anything the portfolio endpoint put in services with fresh data
-            services.length = 0;
-            serviceItems.forEach(s => services.push(s));
-          }
-        } catch { /* silently ignore */ }
+          if (serviceItems.length) { services.length = 0; serviceItems.forEach(s => services.push(s)); }
+        } catch {}
 
         setNavItems({ trading, distribution, services });
-      } catch {
-        // silently ignore
-      }
+      } catch {}
     };
     load();
   }, []);
 
-  // ── Scroll listener ───────────────────────────────────────────────────────
-  const handleScroll = useCallback(() => {
-    dispatch({ type: "setScrollY", payload: window.scrollY });
-  }, []);
+  const handleScroll = useCallback(() => { dispatch({ type: "setScrollY", payload: window.scrollY }); }, []);
+  useEffect(() => { window.addEventListener("scroll", handleScroll); return () => window.removeEventListener("scroll", handleScroll); }, [handleScroll]);
 
-  useEffect(() => {
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [handleScroll]);
-
-  // ── Helpers ───────────────────────────────────────────────────────────────
   const toggleMenu         = (menu: string) => dispatch({ type: "TOGGLE_MENU", menu });
   const toggleRightSidebar = () => dispatch({ type: "TOGGLE_RIGHTSIDEBAR" });
   const toggleSidebar      = () => {
@@ -242,7 +179,6 @@ const InnerPageHeader: React.FC = () => {
     dispatch({ type: "TOGGLE_SIDEBAR" });
   };
 
-  // ── Active path detection ─────────────────────────────────────────────────
   const isAboutActive     = ["/about", "/our-strengths", "/our-clients", "/gallery", "/milestone", "/projects"].some((p) => pathname.startsWith(p));
   const isPortfolioActive = ["/product", "/distribution", "/services"].some((p) => pathname.startsWith(p));
   const isBlogActive      = pathname.startsWith("/blog");
@@ -252,9 +188,10 @@ const InnerPageHeader: React.FC = () => {
     ? [contactInfo.address, contactInfo.city, contactInfo.state, contactInfo.pincode].filter(Boolean).join(", ")
     : "";
 
-  // ── Reusable SVGs ─────────────────────────────────────────────────────────
+  // chevron colour changes based on mobile sidebar open state
+  const chevronColor = state.isSidebarOpen ? "#1a1a2e" : "#ffffff";
   const chevronSvg = (
-    <svg width={10} height={10} viewBox="0 0 10 10" xmlns="http://www.w3.org/2000/svg" style={{ fill: "#ffffff" }}>
+    <svg width={10} height={10} viewBox="0 0 10 10" xmlns="http://www.w3.org/2000/svg" style={{ fill: chevronColor }}>
       <path d="M10 0.0495054L10 10.0001L8.13725 10.0001L-8.22301e-08 1.8812L1.86275 -3.55691e-07L7.35294 5.5446L7.30392 0.0495053L10 0.0495054Z" />
       <path d="M-9.6438e-05 10.0002L6.27441 10.0002L3.62736 7.32687L-9.63211e-05 7.32687L-9.6438e-05 10.0002Z" />
     </svg>
@@ -269,6 +206,7 @@ const InnerPageHeader: React.FC = () => {
   return (
     <>
       <style>{`
+        /* ── Desktop header styles (blue bg, white text) ── */
         header.style-1.inner-page{background-color:#0057C8!important;border-bottom:1px solid rgba(255,255,255,.15)!important}
         header.style-1.inner-page.sticky{background-color:#0057C8!important;box-shadow:0 4px 24px rgba(0,0,0,.18)!important}
         header.style-1.inner-page .main-menu>ul{border-color:rgba(255,255,255,.25)!important}
@@ -293,52 +231,45 @@ const InnerPageHeader: React.FC = () => {
         header.style-1.inner-page .main-menu>ul>li ul.sub-menu.product-mega-submenu .column-title{border-bottom-color:#0057C8!important}
 
         /* ── Right sidebar address overflow fix ── */
-        .right-sidebar-menu .address-area,
-        .right-sidebar-menu ul.address-area {
-          max-width: 100%;
-          overflow: hidden;
+        .right-sidebar-menu .address-area,.right-sidebar-menu ul.address-area{max-width:100%;overflow:hidden}
+        .right-sidebar-menu .address-area .single-address{overflow-wrap:break-word;word-break:break-word;white-space:normal;max-width:100%}
+        .right-sidebar-menu .address-area .single-address span,.right-sidebar-menu .address-area .single-address a{display:block;overflow-wrap:break-word;word-break:break-word;white-space:normal;max-width:100%}
+
+        /* ── FIX 1: Mobile sidebar nav link color → white ── */
+        @media (max-width: 991px) {
+         header.style-1.inner-page .main-menu>ul>li>a{color:#000000!important}
+          .main-menu.show-menu .menu-list > li > a svg path {
+            fill: #ffffff !important;
+          }
         }
-        .right-sidebar-menu .address-area .single-address {
-          overflow-wrap: break-word;
-          word-break: break-word;
-          white-space: normal;
-          max-width: 100%;
-        }
-        .right-sidebar-menu .address-area .single-address span,
-        .right-sidebar-menu .address-area .single-address a {
-          display: block;
-          overflow-wrap: break-word;
-          word-break: break-word;
-          white-space: normal;
-          max-width: 100%;
+
+        /* ── FIX 2: Mobile dropdown toggle ── */
+        @media (max-width: 991px) {
+          .main-menu .sub-menu {
+            display: none;
+          }
+          .main-menu .sub-menu.d-block {
+            display: block !important;
+          }
         }
       `}</style>
 
       {/* ── Right Sidebar ── */}
       <div className={`right-sidebar-menu ${state.isRightSidebar ? "show-right-menu" : ""}`}>
         <div className="right-sidebar-menu-wrap">
-
           <div className="sidebar-logo-area d-flex justify-content-between align-items-center">
             <div className="sidebar-logo-wrap">
-              <Link href="/">
-                <img width={157} height={34} alt="Kavalakat" src="/assets/new-images/logo/KavalakkatLogo-white.png" />
-              </Link>
+              <Link href="/"><img width={157} height={34} alt="Kavalakat" src="/assets/new-images/logo/KavalakkatLogo-white.png" /></Link>
             </div>
-            <div className="right-sidebar-close-btn" onClick={toggleRightSidebar}>
-              <i className="bi bi-x" />
-            </div>
+            <div className="right-sidebar-close-btn" onClick={toggleRightSidebar}><i className="bi bi-x" /></div>
           </div>
-
           <div className="sidebar-content-wrap">
             <div className="title-area">
               <span>Get In Touch With Us</span>
               <h2>Connect with Kavalakat</h2>
               <p>Ready to take the first step towards unlocking opportunity, realizing goals, and embracing innovation?</p>
             </div>
-
             <ul className="contact-area">
-
-              {/* Phone */}
               {contactInfo?.phone && (
                 <li>
                   <div className="single-contact">
@@ -352,9 +283,7 @@ const InnerPageHeader: React.FC = () => {
                     <div className="content">
                       <span>CALL ANY TIME</span>
                       <h6><a href={`tel:${contactInfo.phone}`}>{contactInfo.phone}</a></h6>
-                      {contactInfo.alt_phone && (
-                        <h6><a href={`tel:${contactInfo.alt_phone}`}>{contactInfo.alt_phone}</a></h6>
-                      )}
+                      {contactInfo.alt_phone && <h6><a href={`tel:${contactInfo.alt_phone}`}>{contactInfo.alt_phone}</a></h6>}
                     </div>
                   </div>
                   <svg className="arrow" width={8} height={29} viewBox="0 0 8 29" xmlns="http://www.w3.org/2000/svg">
@@ -362,8 +291,6 @@ const InnerPageHeader: React.FC = () => {
                   </svg>
                 </li>
               )}
-
-              {/* Social */}
               {(contactInfo?.facebook || contactInfo?.linkedin || contactInfo?.instagram) && (
                 <li>
                   <div className="single-contact social">
@@ -384,8 +311,6 @@ const InnerPageHeader: React.FC = () => {
                   </div>
                 </li>
               )}
-
-              {/* Email */}
               {contactInfo?.email && (
                 <li>
                   <div className="single-contact">
@@ -397,16 +322,12 @@ const InnerPageHeader: React.FC = () => {
                     <div className="content">
                       <span>SAY HELLO</span>
                       <h6><a href={`mailto:${contactInfo.email}`}>{contactInfo.email}</a></h6>
-                      {contactInfo.alt_email && (
-                        <h6><a href={`mailto:${contactInfo.alt_email}`}>{contactInfo.alt_email}</a></h6>
-                      )}
+                      {contactInfo.alt_email && <h6><a href={`mailto:${contactInfo.alt_email}`}>{contactInfo.alt_email}</a></h6>}
                     </div>
                   </div>
                 </li>
               )}
-
             </ul>
-
             {fullAddress && (
               <ul className="address-area">
                 <li className="single-address">
@@ -417,7 +338,6 @@ const InnerPageHeader: React.FC = () => {
             )}
             <Link href="/contact" className="all-location-btn">View All Factory Location</Link>
           </div>
-
           <div className="sidebar-bottom-area">
             <p>Copyright 2025 <Link href="/">Kavalakat</Link> | Powered By <a href="https://mindstory.in/">MindStory</a></p>
           </div>
@@ -428,31 +348,30 @@ const InnerPageHeader: React.FC = () => {
       <header className={`header-area style-1 inner-page ${state.scrollY > 20 ? "sticky" : ""}`}>
         <div className="container-fluid d-flex flex-nowrap align-items-center justify-content-between">
 
-          {/* Logo */}
           <div className="company-logo">
-            <Link href="/">
-              <img width={157} height={34} alt="Kavalakat" className="img-fluid" src="/assets/new-images/logo/KavalakkatLogo-white.png" />
-            </Link>
+            <Link href="/"><img width={157} height={34} alt="Kavalakat" className="img-fluid" src="/assets/new-images/logo/KavalakkatLogo-white.png" /></Link>
           </div>
 
-          {/* Nav */}
           <div className={`main-menu ${state.isSidebarOpen ? "show-menu" : ""}`}>
             <div className="mobile-logo-area d-lg-none d-flex align-items-center justify-content-between">
               <Link href="/" className="mobile-logo-wrap">
                 <img width={157} height={34} alt="Kavalakat" className="img-fluid" src="/assets/new-images/logo/KavalakkatLogo-white.png" />
               </Link>
-              <div className="menu-close-btn" onClick={toggleSidebar}>
-                <i className="bi bi-x" />
-              </div>
+              <div className="menu-close-btn" onClick={toggleSidebar}><i className="bi bi-x" /></div>
             </div>
 
             <ul className="menu-list">
-
               <li className={pathname === "/" ? "active" : ""}><Link href="/">Home</Link></li>
 
-              {/* About */}
+              {/* ── FIX 3: About dropdown — link also toggles on mobile ── */}
               <li className={`menu-item-has-children ${isAboutActive ? "active" : ""}`}>
-                <Link href="#" className="drop-down">About {chevronSvg}</Link>
+                <Link
+                  href="#"
+                  className="drop-down"
+                  onClick={(e) => { e.preventDefault(); toggleMenu("about"); }}
+                >
+                  About {chevronSvg}
+                </Link>
                 <i onClick={() => toggleMenu("about")} className={`bi bi-${state.activeMenu === "about" ? "dash" : "plus"} dropdown-icon`} />
                 <ul className={`sub-menu ${state.activeMenu === "about" ? "d-block" : ""}`}>
                   <li className={pathname === "/about"         ? "active" : ""}><Link href="/about"><span>About</span></Link></li>
@@ -463,92 +382,88 @@ const InnerPageHeader: React.FC = () => {
                 </ul>
               </li>
 
-              {/* Portfolio — dynamic mega menu */}
+              {/* ── FIX 3: Portfolio dropdown — navigates on desktop, toggles on mobile ── */}
               <li className={`menu-item-has-children ${isPortfolioActive ? "active" : ""}`}>
-                <Link href="/product" className="drop-down">Portfolio {chevronSvg}</Link>
+                <Link
+                  href="/product"
+                  className="drop-down"
+                  onClick={(e) => { if (state.isSidebarOpen) { e.preventDefault(); toggleMenu("portfolio"); } }}
+                >
+                  Portfolio {chevronSvg}
+                </Link>
                 <i onClick={() => toggleMenu("portfolio")} className={`bi bi-${state.activeMenu === "portfolio" ? "dash" : "plus"} dropdown-icon`} />
                 <ul className={`sub-menu product-mega-submenu ${state.activeMenu === "portfolio" ? "d-block" : ""}`}>
-
                   {navItems.trading.length > 0 && (
                     <li className="product-column">
                       <div className="column-title">TRADING</div>
                       <ul className="column-items">
                         {navItems.trading.map((n) => (
-                          <li key={n.href} className={pathname === n.href ? "active" : ""}>
-                            <Link href={n.href}><span>{n.name}</span></Link>
-                          </li>
+                          <li key={n.href} className={pathname === n.href ? "active" : ""}><Link href={n.href}><span>{n.name}</span></Link></li>
                         ))}
                       </ul>
                     </li>
                   )}
-
                   {navItems.distribution.length > 0 && (
                     <li className="product-column">
                       <div className="column-title">DISTRIBUTION</div>
                       <ul className="column-items">
                         {navItems.distribution.map((n) => (
-                          <li key={n.href} className={pathname === n.href ? "active" : ""}>
-                            <Link href={n.href}><span>{n.name}</span></Link>
-                          </li>
+                          <li key={n.href} className={pathname === n.href ? "active" : ""}><Link href={n.href}><span>{n.name}</span></Link></li>
                         ))}
                       </ul>
                     </li>
                   )}
-
                   {navItems.services.length > 0 && (
                     <li className="product-column">
                       <div className="column-title">SERVICES</div>
                       <ul className="column-items">
                         {navItems.services.map((n) => (
-                          <li key={n.href} className={pathname === n.href ? "active" : ""}>
-                            <Link href={n.href}><span>{n.name}</span></Link>
-                          </li>
+                          <li key={n.href} className={pathname === n.href ? "active" : ""}><Link href={n.href}><span>{n.name}</span></Link></li>
                         ))}
                       </ul>
                     </li>
                   )}
-
                 </ul>
               </li>
 
-              {/* Blog */}
+              {/* ── FIX 3: Blog dropdown — navigates on desktop, toggles on mobile ── */}
               <li className={`menu-item-has-children ${isBlogActive ? "active" : ""}`}>
-                <Link href="/blog" className="drop-down">Blog {chevronSvg}</Link>
+                <Link
+                  href="/blog"
+                  className="drop-down"
+                  onClick={(e) => { if (state.isSidebarOpen) { e.preventDefault(); toggleMenu("blog"); } }}
+                >
+                  Blog {chevronSvg}
+                </Link>
                 <i onClick={() => toggleMenu("blog")} className={`bi bi-${state.activeMenu === "blog" ? "dash" : "plus"} dropdown-icon`} />
                 <ul className={`sub-menu ${state.activeMenu === "blog" ? "d-block" : ""}`}>
-                  <li className={pathname === "/blog" ? "active" : ""}>
-                    <Link href="/blog"><span>All Posts</span></Link>
-                  </li>
+                  <li className={pathname === "/blog" ? "active" : ""}><Link href="/blog"><span>All Posts</span></Link></li>
                   {blogNav.map((post) => {
                     const href  = `/blog/${post.slug}`;
                     const label = post.title.length > 40 ? post.title.slice(0, 40).trimEnd() + "…" : post.title;
-                    return (
-                      <li key={post.slug} className={pathname === href ? "active" : ""}>
-                        <Link href={href}><span>{label}</span></Link>
-                      </li>
-                    );
+                    return <li key={post.slug} className={pathname === href ? "active" : ""}><Link href={href}><span>{label}</span></Link></li>;
                   })}
-                  {blogNav.length === 0 && (
-                    <li style={{ opacity: 0.4, pointerEvents: "none" }}>
-                      <Link href="#"><span>Loading…</span></Link>
-                    </li>
-                  )}
+                  {blogNav.length === 0 && <li style={{ opacity: 0.4, pointerEvents: "none" }}><Link href="#"><span>Loading…</span></Link></li>}
                 </ul>
               </li>
 
-              {/* Contact */}
+              {/* ── FIX 3: Contact dropdown — navigates on desktop, toggles on mobile ── */}
               <li className={`menu-item-has-children ${isContactActive ? "active" : ""}`}>
-                <Link href="/contact" className="drop-down">Contact {chevronSvg}</Link>
+                <Link
+                  href="/contact"
+                  className="drop-down"
+                  onClick={(e) => { if (state.isSidebarOpen) { e.preventDefault(); toggleMenu("contact"); } }}
+                >
+                  Contact {chevronSvg}
+                </Link>
                 <i onClick={() => toggleMenu("contact")} className={`bi bi-${state.activeMenu === "contact" ? "dash" : "plus"} dropdown-icon`} />
                 <ul className={`sub-menu ${state.activeMenu === "contact" ? "d-block" : ""}`}>
                   <li className={pathname === "/contact" ? "active" : ""}><Link href="/contact"><span>Contact</span></Link></li>
                   <li className={pathname === "/career"  ? "active" : ""}><Link href="/career"><span>Careers</span></Link></li>
                 </ul>
               </li>
-
             </ul>
 
-            {/* Mobile phone */}
             {contactInfo?.phone && (
               <div className="contact-area d-lg-none d-flex">
                 <div className="icon">{phoneSvg}</div>
@@ -560,7 +475,6 @@ const InnerPageHeader: React.FC = () => {
             )}
           </div>
 
-          {/* Right controls */}
           <div className="nav-right">
             {contactInfo?.phone && (
               <div className="contact-area d-lg-flex d-none">

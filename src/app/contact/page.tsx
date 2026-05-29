@@ -113,7 +113,7 @@ const ContactPage = () => {
       <Breadcrumb
         title="Contact"
         subtitle="Contact Us Stay Connected How Can We Assist You"
-        image='/assets/new-images/bm/bm-2.jpeg'
+        image='/assets/new-images/new-images/contact-bm.webp'
       />
 
       <style>{`

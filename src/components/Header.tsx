@@ -8,13 +8,9 @@ import type { Contact, PortfolioItem } from '@/lib/api'
 
 const API = process.env.NEXT_PUBLIC_API_URL || "https://api.kavalakat.com/api"
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 interface NavItem   { name: string; href: string }
 interface NavGroups { trading: NavItem[]; distribution: NavItem[]; services: NavItem[] }
 interface BlogNavItem { title: string; slug: string }
-
-// ─── Unwrap { success: true, data: ... } envelope ────────────────────────────
 
 function unwrapEnvelope(json: any): any {
   if (json !== null && typeof json === "object" && !Array.isArray(json) && "success" in json && "data" in json) {
@@ -23,13 +19,9 @@ function unwrapEnvelope(json: any): any {
   return json
 }
 
-// ─── Services slug helper ─────────────────────────────────────────────────────
-
 function toSlug(s: string): string {
   return (s || '').toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
 }
-
-// ─── Header state reducer ─────────────────────────────────────────────────────
 
 interface State {
   activeMenu: string
@@ -55,8 +47,6 @@ function reducer(s: State, a: Action): State {
   }
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
-
 const Header: React.FC = () => {
   const [state,       dispatch]       = useReducer(reducer, init)
   const [navItems,    setNavItems]    = useState<NavGroups>({ trading: [], distribution: [], services: [] })
@@ -65,52 +55,31 @@ const Header: React.FC = () => {
   const headerRef = useRef<HTMLElement>(null)
   const pathname  = usePathname() as string
 
-  // ── Fetch contact ─────────────────────────────────────────────────────────
-  useEffect(() => {
-    getContact().then((data) => {
-      if (data) setContactInfo(data)
-    })
-  }, [])
+  useEffect(() => { getContact().then((data) => { if (data) setContactInfo(data) }) }, [])
 
-  // ── Fetch blog posts for nav ──────────────────────────────────────────────
   useEffect(() => {
     const loadBlog = async () => {
       try {
         const res = await fetch(`${API}/blog/?page_size=6&status=published`)
         if (!res.ok) return
         const json = await res.json()
-
         let posts: any[] = []
-        if (json.success !== undefined) {
-          posts = json.data ?? []
-        } else if (Array.isArray(json)) {
-          posts = json
-        } else if (json.results) {
-          posts = json.results
-        }
-
-        const items: BlogNavItem[] = posts
-          .filter((p: any) => p.slug && p.title)
-          .slice(0, 6)
-          .map((p: any) => ({ title: p.title, slug: p.slug }))
-
-        setBlogNav(items)
-      } catch {
-        // silently ignore
-      }
+        if (json.success !== undefined) { posts = json.data ?? [] }
+        else if (Array.isArray(json)) { posts = json }
+        else if (json.results) { posts = json.results }
+        setBlogNav(posts.filter((p: any) => p.slug && p.title).slice(0, 6).map((p: any) => ({ title: p.title, slug: p.slug })))
+      } catch {}
     }
     loadBlog()
   }, [])
 
-  // ── Fetch portfolio (trading + distribution) + services nav ──────────────
   useEffect(() => {
     const load = async () => {
       try {
-        const trading:      NavItem[] = []
+        const trading: NavItem[] = []
         const distribution: NavItem[] = []
-        const services:     NavItem[] = []
+        const services: NavItem[] = []
 
-        // ── 1. Portfolio items (trading + distribution) ──────────────────
         try {
           const res = await fetch(`${API}/portfolio/page/`)
           if (res.ok) {
@@ -118,48 +87,32 @@ const Header: React.FC = () => {
             const page = unwrapEnvelope(json)
             const hasData = page?.trading?.length || page?.distribution?.length
             if (hasData) {
-              ;(page.trading ?? []).forEach((i: PortfolioItem) => {
-                const n = normalisePortfolioItem(i)
-                trading.push({ name: n.name, href: buildPortfolioHref(n) })
-              })
-              ;(page.distribution ?? []).forEach((i: PortfolioItem) => {
-                const n = normalisePortfolioItem(i)
-                distribution.push({ name: n.name, href: buildPortfolioHref(n) })
-              })
-              // Also pull any services the portfolio/page endpoint still returns
-              ;(page.services ?? []).forEach((i: PortfolioItem) => {
-                const n = normalisePortfolioItem(i)
-                services.push({ name: n.name, href: buildPortfolioHref(n) })
-              })
+              ;(page.trading ?? []).forEach((i: PortfolioItem) => { const n = normalisePortfolioItem(i); trading.push({ name: n.name, href: buildPortfolioHref(n) }) })
+              ;(page.distribution ?? []).forEach((i: PortfolioItem) => { const n = normalisePortfolioItem(i); distribution.push({ name: n.name, href: buildPortfolioHref(n) }) })
+              ;(page.services ?? []).forEach((i: PortfolioItem) => { const n = normalisePortfolioItem(i); services.push({ name: n.name, href: buildPortfolioHref(n) }) })
             }
           }
-        } catch { /* fall through */ }
+        } catch {}
 
-        // If portfolio/page returned nothing, try flat items list
         if (!trading.length && !distribution.length) {
           try {
-            const res  = await fetch(`${API}/portfolio/items/`)
+            const res = await fetch(`${API}/portfolio/items/`)
             if (res.ok) {
               const json = await res.json()
               const data = unwrapEnvelope(json)
               const allItems: any[] = Array.isArray(data) ? data : (data.results ?? data.items ?? [])
-              allItems
-                .filter((i: any) => i.is_active !== false)
-                .sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0))
-                .forEach((item: any) => {
-                  const n    = normalisePortfolioItem(item)
-                  const href = buildPortfolioHref(n)
-                  const entry = { name: n.name, href }
-                  if (href.startsWith('/product/'))           trading.push(entry)
-                  else if (href.startsWith('/distribution/')) distribution.push(entry)
-                  else if (href.startsWith('/services/'))     services.push(entry)
-                })
+              allItems.filter((i: any) => i.is_active !== false).sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0)).forEach((item: any) => {
+                const n = normalisePortfolioItem(item)
+                const href = buildPortfolioHref(n)
+                const entry = { name: n.name, href }
+                if (href.startsWith('/product/')) trading.push(entry)
+                else if (href.startsWith('/distribution/')) distribution.push(entry)
+                else if (href.startsWith('/services/')) services.push(entry)
+              })
             }
-          } catch { /* silently ignore */ }
+          } catch {}
         }
 
-        // ── 2. Services from new /api/services/ endpoint ─────────────────
-        // Always fetch this — it is authoritative for the services column
         try {
           let url: string | null = `${API}/services/?is_active=true`
           const serviceItems: NavItem[] = []
@@ -167,11 +120,7 @@ const Header: React.FC = () => {
             const res: Response = await fetch(url, { cache: 'no-store' })
             if (!res.ok) break
             const json = await res.json()
-            const items: any[] = Array.isArray(json?.results)
-              ? json.results
-              : Array.isArray(json?.data)
-                ? json.data
-                : Array.isArray(json) ? json : []
+            const items: any[] = Array.isArray(json?.results) ? json.results : Array.isArray(json?.data) ? json.data : Array.isArray(json) ? json : []
             items.forEach((svc: any) => {
               if (svc.is_active === false) return
               const slug = svc.slug || toSlug(svc.name)
@@ -179,22 +128,15 @@ const Header: React.FC = () => {
             })
             url = json?.next ?? null
           }
-          if (serviceItems.length) {
-            // Replace anything the portfolio endpoint put in services with fresh data
-            services.length = 0
-            serviceItems.forEach(s => services.push(s))
-          }
-        } catch { /* silently ignore */ }
+          if (serviceItems.length) { services.length = 0; serviceItems.forEach(s => services.push(s)) }
+        } catch {}
 
         setNavItems({ trading, distribution, services })
-      } catch {
-        // silently ignore
-      }
+      } catch {}
     }
     load()
   }, [])
 
-  // ── Scroll listener ───────────────────────────────────────────────────────
   useEffect(() => {
     const onScroll = () => dispatch({ type: "setScrollY", payload: window.scrollY })
     window.addEventListener("scroll", onScroll)
@@ -206,7 +148,6 @@ const Header: React.FC = () => {
     dispatch({ type: "TOGGLE_SIDEBAR" })
   }
 
-  // ── Active path detection ─────────────────────────────────────────────────
   const isAboutActive     = ["/about", "/our-strengths", "/our-clients", "/gallery", "/milestone", "/projects"].some(p => pathname.startsWith(p))
   const isPortfolioActive = ["/product", "/distribution", "/services"].some(p => pathname.startsWith(p))
   const isBlogActive      = pathname.startsWith("/blog")
@@ -216,9 +157,10 @@ const Header: React.FC = () => {
     ? [contactInfo.address, contactInfo.city, contactInfo.state, contactInfo.pincode].filter(Boolean).join(", ")
     : ""
 
-  // ── Reusable SVGs ─────────────────────────────────────────────────────────
+  // ── Chevron reacts to sidebar open state ──────────────────────────────────
+  const chevronColor = state.isSidebarOpen ? "#1a1a2e" : "#fff"
   const chevron = (
-    <svg width={10} height={10} viewBox="0 0 10 10" xmlns="http://www.w3.org/2000/svg" style={{ fill: "#fff" }}>
+    <svg width={10} height={10} viewBox="0 0 10 10" xmlns="http://www.w3.org/2000/svg" style={{ fill: chevronColor }}>
       <path d="M10 0.0495054L10 10.0001L8.13725 10.0001L-8.22301e-08 1.8812L1.86275 -3.55691e-07L7.35294 5.5446L7.30392 0.0495053L10 0.0495054Z" />
       <path d="M-9.6438e-05 10.0002L6.27441 10.0002L3.62736 7.32687L-9.63211e-05 7.32687L-9.6438e-05 10.0002Z" />
     </svg>
@@ -233,6 +175,7 @@ const Header: React.FC = () => {
   return (
     <>
       <style>{`
+        /* ── Desktop: blue header, white nav text ── */
         header.style-1{background-color:#0057C8!important}
         header.style-1.sticky{background-color:#0057C8!important;box-shadow:0 4px 24px rgba(0,0,0,.18)!important}
         header.style-1.inner-page{background-color:#0057C8!important;border-bottom:1px solid rgba(255,255,255,.15)!important}
@@ -259,52 +202,112 @@ const Header: React.FC = () => {
         header.style-1 .main-menu>ul>li ul.sub-menu.product-mega-submenu .column-title{border-bottom-color:#0057C8!important}
 
         /* ── Right sidebar address overflow fix ── */
-        .right-sidebar-menu .address-area,
-        .right-sidebar-menu ul.address-area {
-          max-width: 100%;
-          overflow: hidden;
+        .right-sidebar-menu .address-area,.right-sidebar-menu ul.address-area{max-width:100%;overflow:hidden}
+        .right-sidebar-menu .address-area .single-address{overflow-wrap:break-word;word-break:break-word;white-space:normal;max-width:100%}
+        .right-sidebar-menu .address-area .single-address span,.right-sidebar-menu .address-area .single-address a{display:block;overflow-wrap:break-word;word-break:break-word;white-space:normal;max-width:100%}
+
+        /* ═══════════════════════════════════════════════════════════════════
+           MOBILE MENU — white sidebar, black text
+           Selector  header.style-1 .main-menu.show-menu ...
+           has equal specificity to the desktop rules above, and appears
+           LATER in the stylesheet, so it wins the cascade.
+        ═══════════════════════════════════════════════════════════════════ */
+
+        /* Sidebar becomes white when open */
+        header.style-1 .main-menu.show-menu {
+          background: #fff !important;
         }
-        .right-sidebar-menu .address-area .single-address {
-          overflow-wrap: break-word;
-          word-break: break-word;
-          white-space: normal;
-          max-width: 100%;
+
+        /* ALL top-level nav links → dark text */
+        header.style-1 .main-menu.show-menu > ul > li > a,
+        header.style-1 .main-menu.show-menu ul.menu-list > li > a,
+        header.style-1 .main-menu.show-menu ul.menu-list > li > a span {
+          color: #1a1a2e !important;
+          background-color: transparent !important;
         }
-        .right-sidebar-menu .address-area .single-address span,
-        .right-sidebar-menu .address-area .single-address a {
-          display: block;
-          overflow-wrap: break-word;
-          word-break: break-word;
-          white-space: normal;
-          max-width: 100%;
+
+        /* Chevron SVGs inside nav links → dark */
+        header.style-1 .main-menu.show-menu > ul > li > a svg,
+        header.style-1 .main-menu.show-menu ul.menu-list > li > a svg {
+          fill: #1a1a2e !important;
+        }
+
+        /* +/- accordion toggle icons → dark */
+        header.style-1 .main-menu.show-menu > ul > li .bi,
+        header.style-1 .main-menu.show-menu ul.menu-list > li .bi {
+          color: #1a1a2e !important;
+        }
+
+        /* Sub-menu items */
+        header.style-1 .main-menu.show-menu ul.sub-menu li a,
+        header.style-1 .main-menu.show-menu ul.sub-menu li a span {
+          color: #444 !important;
+        }
+
+        /* Active top-level link */
+        header.style-1 .main-menu.show-menu > ul > li.active > a,
+        header.style-1 .main-menu.show-menu ul.menu-list > li.active > a {
+          color: #0057C8 !important;
+          background-color: transparent !important;
+        }
+        header.style-1 .main-menu.show-menu ul.menu-list > li.active > a svg {
+          fill: #0057C8 !important;
+        }
+
+        /* Hover top-level link */
+        header.style-1 .main-menu.show-menu > ul > li:hover > a,
+        header.style-1 .main-menu.show-menu ul.menu-list > li:hover > a {
+          color: #0057C8 !important;
+          background-color: rgba(0,87,200,.05) !important;
+        }
+        header.style-1 .main-menu.show-menu ul.menu-list > li:hover > a svg {
+          fill: #0057C8 !important;
+        }
+
+        /* Active sub-menu link */
+        header.style-1 .main-menu.show-menu ul.sub-menu li.active a,
+        header.style-1 .main-menu.show-menu ul.sub-menu li.active a span {
+          color: #0057C8 !important;
+        }
+
+        /* Mega-menu TRADING / DISTRIBUTION / SERVICES column titles */
+        header.style-1 .main-menu.show-menu .product-mega-submenu .column-title {
+          color: #0057C8 !important;
+          border-bottom-color: #0057C8 !important;
+        }
+
+        /* Column item links inside mega-menu */
+        header.style-1 .main-menu.show-menu .product-mega-submenu .column-items li a,
+        header.style-1 .main-menu.show-menu .product-mega-submenu .column-items li a span {
+          color: #444 !important;
+        }
+        header.style-1 .main-menu.show-menu .product-mega-submenu .column-items li.active a,
+        header.style-1 .main-menu.show-menu .product-mega-submenu .column-items li.active a span {
+          color: #0057C8 !important;
+        }
+
+        /* X close button */
+        header.style-1 .main-menu.show-menu .menu-close-btn i {
+          color: #1a1a2e !important;
         }
       `}</style>
 
       {/* ── Right Sidebar ── */}
       <div className={`right-sidebar-menu ${state.isRightSidebar ? "show-right-menu" : ""}`}>
         <div className="right-sidebar-menu-wrap">
-
           <div className="sidebar-logo-area d-flex justify-content-between align-items-center">
             <div className="sidebar-logo-wrap">
-              <Link href="/">
-                <img width={157} height={34} alt="Kavalakat" src="/assets/new-images/logo/KavalakkatLogo-white.png" />
-              </Link>
+              <Link href="/"><img width={157} height={34} alt="Kavalakat" src="/assets/new-images/logo/KavalakkatLogo-white.png" /></Link>
             </div>
-            <div className="right-sidebar-close-btn" onClick={() => dispatch({ type: "TOGGLE_RIGHTSIDEBAR" })}>
-              <i className="bi bi-x" />
-            </div>
+            <div className="right-sidebar-close-btn" onClick={() => dispatch({ type: "TOGGLE_RIGHTSIDEBAR" })}><i className="bi bi-x" /></div>
           </div>
-
           <div className="sidebar-content-wrap">
             <div className="title-area">
               <span>Get In Touch With Us</span>
               <h2>Connect with Kavalakat</h2>
               <p>Ready to take the first step towards unlocking opportunity, realizing goals, and embracing innovation?</p>
             </div>
-
             <ul className="contact-area">
-
-              {/* Phone */}
               {contactInfo?.phone && (
                 <li>
                   <div className="single-contact">
@@ -316,9 +319,7 @@ const Header: React.FC = () => {
                     <div className="content">
                       <span>CALL ANY TIME</span>
                       <h6><a href={`tel:${contactInfo.phone}`}>{contactInfo.phone}</a></h6>
-                      {contactInfo.alt_phone && (
-                        <h6><a href={`tel:${contactInfo.alt_phone}`}>{contactInfo.alt_phone}</a></h6>
-                      )}
+                      {contactInfo.alt_phone && <h6><a href={`tel:${contactInfo.alt_phone}`}>{contactInfo.alt_phone}</a></h6>}
                     </div>
                   </div>
                   <svg className="arrow" width={8} height={29} viewBox="0 0 8 29" xmlns="http://www.w3.org/2000/svg">
@@ -326,8 +327,6 @@ const Header: React.FC = () => {
                   </svg>
                 </li>
               )}
-
-              {/* Social */}
               {(contactInfo?.facebook || contactInfo?.linkedin || contactInfo?.instagram) && (
                 <li>
                   <div className="single-contact social">
@@ -335,16 +334,6 @@ const Header: React.FC = () => {
                       <svg width={35} height={35} viewBox="0 0 35 35" xmlns="http://www.w3.org/2000/svg">
                         <path d="M30.5966 7.4621C32.7313 10.243 34.0001 13.7234 34.0001 17.5C34.0001 26.6127 26.6128 34 17.5001 34C13.7331 34 10.261 32.7377 7.48364 30.6129" strokeMiterlimit={10} strokeLinecap="round" strokeLinejoin="round" />
                         <path d="M7.99634 4.01017C10.683 2.11388 13.9614 0.999997 17.5 0.999997C21.2782 0.999997 24.7599 2.26989 27.5413 4.40617" strokeMiterlimit={10} strokeLinecap="round" strokeLinejoin="round" />
-                        <path d="M4.38136 27.509C2.26004 24.7329 1 21.2636 1 17.5C1 14.0975 2.02984 10.9356 3.7948 8.30896" strokeMiterlimit={10} strokeLinecap="round" strokeLinejoin="round" />
-                        <path d="M22.375 25.1463C21.456 30.4092 19.6178 34 17.5 34C14.4624 34 12 26.6127 12 17.5C12 16.3514 12.0391 15.2302 12.1136 14.1477" strokeMiterlimit={10} strokeLinecap="round" strokeLinejoin="round" />
-                        <path d="M12.6199 9.88271C13.5372 4.60405 15.3783 1.00001 17.5 1.00001C20.5375 1.00001 23 8.38731 23 17.5C23 18.6491 22.9608 19.7708 22.8863 20.8537" strokeMiterlimit={10} strokeLinecap="round" strokeLinejoin="round" />
-                        <path d="M2.18506 23H20.5404" strokeMiterlimit={10} strokeLinecap="round" strokeLinejoin="round" />
-                        <path d="M14.7053 12H32.8151" strokeMiterlimit={10} strokeLinecap="round" strokeLinejoin="round" />
-                        <path d="M2.18506 12H10.1218" strokeMiterlimit={10} strokeLinecap="round" strokeLinejoin="round" />
-                        <path d="M24.8332 23C24.8332 21.8146 23.8723 20.8537 22.6869 20.8537C21.5015 20.8537 20.5405 21.8146 20.5405 23C20.5405 24.1854 21.5015 25.1463 22.6869 25.1463C23.8723 25.1463 24.8332 24.1854 24.8332 23Z" strokeMiterlimit={10} strokeLinecap="round" strokeLinejoin="round" />
-                        <path d="M14.4143 12C14.4143 10.8146 13.4533 9.85366 12.2679 9.85366C11.0825 9.85366 10.1216 10.8146 10.1216 12C10.1216 13.1854 11.0825 14.1463 12.2679 14.1463C13.4533 14.1463 14.4143 13.1854 14.4143 12Z" strokeMiterlimit={10} strokeLinecap="round" strokeLinejoin="round" />
-                        <path d="M31.3173 5.82927C31.3173 4.64388 30.3564 3.68293 29.171 3.68293C27.9856 3.68293 27.0247 4.64388 27.0247 5.82927C27.0247 7.01465 27.9856 7.97561 29.171 7.97561C30.3564 7.97561 31.3173 7.01465 31.3173 5.82927Z" strokeMiterlimit={10} strokeLinecap="round" strokeLinejoin="round" />
-                        <path d="M7.97554 29.1707C7.97554 27.9853 7.01459 27.0244 5.8292 27.0244C4.64382 27.0244 3.68286 27.9853 3.68286 29.1707C3.68286 30.3561 4.64382 31.3171 5.8292 31.3171C7.01459 31.3171 7.97554 30.3561 7.97554 29.1707Z" strokeMiterlimit={10} strokeLinecap="round" strokeLinejoin="round" />
                         <path d="M24.833 23H32.815" strokeMiterlimit={10} strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
                     </div>
@@ -362,8 +351,6 @@ const Header: React.FC = () => {
                   </svg>
                 </li>
               )}
-
-              {/* Email */}
               {contactInfo?.email && (
                 <li>
                   <div className="single-contact">
@@ -375,17 +362,12 @@ const Header: React.FC = () => {
                     <div className="content">
                       <span>SAY HELLO</span>
                       <h6><a href={`mailto:${contactInfo.email}`}>{contactInfo.email}</a></h6>
-                      {contactInfo.alt_email && (
-                        <h6><a href={`mailto:${contactInfo.alt_email}`}>{contactInfo.alt_email}</a></h6>
-                      )}
+                      {contactInfo.alt_email && <h6><a href={`mailto:${contactInfo.alt_email}`}>{contactInfo.alt_email}</a></h6>}
                     </div>
                   </div>
                 </li>
               )}
-
             </ul>
-
-            {/* Address */}
             {fullAddress && (
               <ul className="address-area">
                 <li className="single-address">
@@ -396,7 +378,6 @@ const Header: React.FC = () => {
             )}
             <Link href="/contact" className="all-location-btn">View All Factory Location</Link>
           </div>
-
           <div className="sidebar-bottom-area">
             <p>Copyright 2025 <Link href="/">Kavalakat</Link> | Powered By <a href="https://mindstory.in/">MindStory</a></p>
           </div>
@@ -407,14 +388,10 @@ const Header: React.FC = () => {
       <header ref={headerRef} className={`header-area style-1 ${state.scrollY > 20 ? "sticky" : ""}`}>
         <div className="container-fluid d-flex flex-nowrap align-items-center justify-content-between">
 
-          {/* Logo */}
           <div className="company-logo">
-            <Link href="/">
-              <img width={157} height={34} alt="Kavalakat" className="img-fluid" src="/assets/new-images/logo/KavalakkatLogo-white.png" />
-            </Link>
+            <Link href="/"><img width={157} height={34} alt="Kavalakat" className="img-fluid" src="/assets/new-images/logo/KavalakkatLogo-white.png" /></Link>
           </div>
 
-          {/* Nav */}
           <div className={`main-menu ${state.isSidebarOpen ? "show-menu" : ""}`}>
             <div className="mobile-logo-area d-lg-none d-flex align-items-center justify-content-between">
               <Link href="/" className="mobile-logo-wrap">
@@ -424,10 +401,8 @@ const Header: React.FC = () => {
             </div>
 
             <ul className="menu-list">
-
               <li className={pathname === "/" ? "active" : ""}><Link href="/">Home</Link></li>
 
-              {/* About */}
               <li className={`menu-item-has-children ${isAboutActive ? "active" : ""}`}>
                 <Link href="#" className="drop-down">About {chevron}</Link>
                 <i onClick={() => dispatch({ type: "TOGGLE_MENU", menu: "about" })} className={`bi bi-${state.activeMenu === "about" ? "dash" : "plus"} dropdown-icon`} />
@@ -440,72 +415,51 @@ const Header: React.FC = () => {
                 </ul>
               </li>
 
-              {/* Portfolio — mega menu */}
               <li className={`menu-item-has-children ${isPortfolioActive ? "active" : ""}`}>
                 <Link href="/product" className="drop-down">Portfolio {chevron}</Link>
                 <i onClick={() => dispatch({ type: "TOGGLE_MENU", menu: "portfolio" })} className={`bi bi-${state.activeMenu === "portfolio" ? "dash" : "plus"} dropdown-icon`} />
                 <ul className={`sub-menu product-mega-submenu ${state.activeMenu === "portfolio" ? "d-block" : ""}`}>
-
                   {navItems.trading.length > 0 && (
                     <li className="product-column">
                       <div className="column-title">TRADING</div>
                       <ul className="column-items">
-                        {navItems.trading.map(n => (
-                          <li key={n.href} className={pathname === n.href ? "active" : ""}><Link href={n.href}><span>{n.name}</span></Link></li>
-                        ))}
+                        {navItems.trading.map(n => <li key={n.href} className={pathname === n.href ? "active" : ""}><Link href={n.href}><span>{n.name}</span></Link></li>)}
                       </ul>
                     </li>
                   )}
-
                   {navItems.distribution.length > 0 && (
                     <li className="product-column">
                       <div className="column-title">DISTRIBUTION</div>
                       <ul className="column-items">
-                        {navItems.distribution.map(n => (
-                          <li key={n.href} className={pathname === n.href ? "active" : ""}><Link href={n.href}><span>{n.name}</span></Link></li>
-                        ))}
+                        {navItems.distribution.map(n => <li key={n.href} className={pathname === n.href ? "active" : ""}><Link href={n.href}><span>{n.name}</span></Link></li>)}
                       </ul>
                     </li>
                   )}
-
                   {navItems.services.length > 0 && (
                     <li className="product-column">
                       <div className="column-title">SERVICES</div>
                       <ul className="column-items">
-                        {navItems.services.map(n => (
-                          <li key={n.href} className={pathname === n.href ? "active" : ""}><Link href={n.href}><span>{n.name}</span></Link></li>
-                        ))}
+                        {navItems.services.map(n => <li key={n.href} className={pathname === n.href ? "active" : ""}><Link href={n.href}><span>{n.name}</span></Link></li>)}
                       </ul>
                     </li>
                   )}
-
                 </ul>
               </li>
 
-              {/* Blog */}
               <li className={`menu-item-has-children ${isBlogActive ? "active" : ""}`}>
                 <Link href="/blog" className="drop-down">Blog {chevron}</Link>
                 <i onClick={() => dispatch({ type: "TOGGLE_MENU", menu: "blog" })} className={`bi bi-${state.activeMenu === "blog" ? "dash" : "plus"} dropdown-icon`} />
                 <ul className={`sub-menu ${state.activeMenu === "blog" ? "d-block" : ""}`}>
-                  <li className={pathname === "/blog" ? "active" : ""}>
-                    <Link href="/blog"><span>All Posts</span></Link>
-                  </li>
+                  <li className={pathname === "/blog" ? "active" : ""}><Link href="/blog"><span>All Posts</span></Link></li>
                   {blogNav.map((post) => {
                     const href = `/blog/${post.slug}`
                     const label = post.title.length > 40 ? post.title.slice(0, 40).trimEnd() + "…" : post.title
-                    return (
-                      <li key={post.slug} className={pathname === href ? "active" : ""}>
-                        <Link href={href}><span>{label}</span></Link>
-                      </li>
-                    )
+                    return <li key={post.slug} className={pathname === href ? "active" : ""}><Link href={href}><span>{label}</span></Link></li>
                   })}
-                  {blogNav.length === 0 && (
-                    <li style={{ opacity: 0.4, pointerEvents: "none" }}><Link href="#"><span>Loading…</span></Link></li>
-                  )}
+                  {blogNav.length === 0 && <li style={{ opacity: 0.4, pointerEvents: "none" }}><Link href="#"><span>Loading…</span></Link></li>}
                 </ul>
               </li>
 
-              {/* Contact */}
               <li className={`menu-item-has-children ${isContactActive ? "active" : ""}`}>
                 <Link href="/contact" className="drop-down">Contact {chevron}</Link>
                 <i onClick={() => dispatch({ type: "TOGGLE_MENU", menu: "contact" })} className={`bi bi-${state.activeMenu === "contact" ? "dash" : "plus"} dropdown-icon`} />
@@ -514,10 +468,8 @@ const Header: React.FC = () => {
                   <li className={pathname === "/career"  ? "active" : ""}><Link href="/career"><span>Careers</span></Link></li>
                 </ul>
               </li>
-
             </ul>
 
-            {/* Mobile phone */}
             {contactInfo?.phone && (
               <div className="contact-area d-lg-none d-flex">
                 <div className="icon">{phoneSvg}</div>
@@ -529,7 +481,6 @@ const Header: React.FC = () => {
             )}
           </div>
 
-          {/* Right controls */}
           <div className="nav-right">
             {contactInfo?.phone && (
               <div className="contact-area d-lg-flex d-none">
