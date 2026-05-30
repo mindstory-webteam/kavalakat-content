@@ -230,10 +230,10 @@ const TradingDetailPage = () => {
     <>
       <InnerPageHeader />
       <Breadcrumb
-        title={item.name}
-        subtitle={`${item.category_name || 'Trading'} — ${item.name}`}
-        image={item.banner_image_url || item.image_url || '/assets/new-images/bm/bm-3.jpeg'}
-      />
+  title={item.name}
+  subtitle={`${item.hero_title}`}
+  image={item.banner_image_url || item.image_url || '/assets/new-images/bm/bm-3.jpeg'}
+/>
 
       {/* ── Hero / About ── */}
       <div className="product-details-top-area pt-120 mb-120" id="scroll-section">
@@ -279,7 +279,10 @@ const TradingDetailPage = () => {
                 </div>
                 <div className="col-lg-6">
                   <div className="faq-content-area p-4">
-                    <h2 className="mb-4">{item.features_title || `${item.name} Features`}</h2>
+                    <h2 className="mb-4">
+  {(item.features_title || `${item.name} Features`).charAt(0).toUpperCase() + 
+   (item.features_title || `${item.name} Features`).slice(1).toLowerCase()}
+</h2>
                     <div className="accordion" id="accordionExample">
                       {features.map((feat, idx) => (
                         <div className="accordion-item mb-3 animated-accordion" key={idx}>
