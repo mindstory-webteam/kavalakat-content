@@ -32,12 +32,14 @@ export default function Home() {
     {/* <HomeLogoSection /> */}
     <Footer />
     
-     <ChatbotWidget 
-        apiEndpoint="/api/chat"
-        brandColor="#6366f1"
-        brandName="AI Assistant"
-        brochureUrl="/Kavalakat.pdf"   
-      />
+     <ChatbotWidget
+  brandColor="#0077be"
+  brandName="Kavalakat AI"
+  companyName="Kavalakat"
+  whatsappNumber="916238000000"
+  phoneNumber="0487 244 0380"
+  email="contact@kavalakat.com"
+/>
     </>
   );
 }

@@ -52,11 +52,89 @@ const stats = [
   { number: '15+',  label: 'Skilled Professionals' },
 ]
 
-// ─── Component ────────────────────────────────────────────────────────────────
+// ─── ProjectCard (stateful fallback — prevents infinite onError loop) ─────────
+function ProjectCard({ project: p, index: i }: { project: Project; index: number }) {
+  const [imgSrc,  setImgSrc]  = useState<string>(p.image_url  || p.image  || FALLBACK_IMAGE)
+  const [logoSrc, setLogoSrc] = useState<string>(p.client_logo_url || p.client_logo || FALLBACK_LOGO)
+
+  const location = p.client_location || p.location || ''
+
+  return (
+    <div
+      className="psc-card wow animate fadeInUp"
+      data-wow-delay={`${200 + (i % 3) * 100}ms`}
+      data-wow-duration="1500ms"
+    >
+      <div className="psc-img-wrap">
+        <Image
+          width={600}
+          height={380}
+          src={imgSrc}
+          alt={p.title}
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          onError={() => setImgSrc(FALLBACK_IMAGE)}
+        />
+        {p.tag && <span className="psc-badge">{p.tag}</span>}
+        {p.is_featured && (
+          <span className="psc-featured-badge">Featured</span>
+        )}
+        <div className="psc-arr">
+          <svg width={13} height={13} viewBox="0 0 35 35">
+            <path d="M0.173267 0H34.9999V6.51953L6.58414 34.9996L0 28.4801L19.4059 9.2646L0.173267 9.43616V0Z"/>
+            <path d="M34.999 34.9996V13.0391L25.6426 22.3037V34.9996H34.999Z"/>
+          </svg>
+        </div>
+      </div>
+
+      <div className="psc-body">
+        <div className="psc-client">
+          <div className="psc-logo">
+            <Image
+              width={42}
+              height={42}
+              src={logoSrc}
+              alt={p.client || p.title}
+              onError={() => setLogoSrc(FALLBACK_LOGO)}
+            />
+          </div>
+          <div className="psc-client-info">
+            <h5>{p.client || p.title}</h5>
+            {location && (
+              <span>
+                <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                  <circle cx="12" cy="10" r="3"/>
+                </svg>
+                {location}
+              </span>
+            )}
+          </div>
+        </div>
+
+        <p>{p.description}</p>
+
+        <Link
+          href={p.contact_url || '/contact'}
+          className="psc-link"
+          target={p.contact_url ? '_blank' : undefined}
+          rel={p.contact_url ? 'noopener noreferrer' : undefined}
+        >
+          Get In Touch
+          <svg width={12} height={12} viewBox="0 0 35 35">
+            <path d="M0.173267 0H34.9999V6.51953L6.58414 34.9996L0 28.4801L19.4059 9.2646L0.173267 9.43616V0Z"/>
+            <path d="M34.999 34.9996V13.0391L25.6426 22.3037V34.9996H34.999Z"/>
+          </svg>
+        </Link>
+      </div>
+    </div>
+  )
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 const Page = () => {
-  const [projects, setProjects]   = useState<Project[]>([])
-  const [loading, setLoading]     = useState(true)
-  const [error, setError]         = useState<string | null>(null)
+  const [projects, setProjects] = useState<Project[]>([])
+  const [loading, setLoading]   = useState(true)
+  const [error, setError]       = useState<string | null>(null)
 
   const fetchProjects = useCallback(async () => {
     setLoading(true)
@@ -66,7 +144,6 @@ const Page = () => {
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const raw: ProjectsApiResponse = await res.json()
       const items = extractProjects(raw)
-      // Featured first, then by created_at desc
       items.sort((a, b) => {
         if (a.is_featured !== b.is_featured) return a.is_featured ? -1 : 1
         return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
@@ -301,80 +378,9 @@ const Page = () => {
           {/* ── Grid ── */}
           {!loading && !error && projects.length > 0 && (
             <div className="psc-grid">
-              {projects.map((p, i) => {
-                const imgSrc  = p.image_url  || p.image  || FALLBACK_IMAGE
-                const logoSrc = p.client_logo_url || p.client_logo || FALLBACK_LOGO
-                const location = p.client_location || p.location || ''
-
-                return (
-                  <div
-                    className="psc-card wow animate fadeInUp"
-                    data-wow-delay={`${200 + (i % 3) * 100}ms`}
-                    data-wow-duration="1500ms"
-                    key={p.id}
-                  >
-                    <div className="psc-img-wrap">
-                      <Image
-                        width={600} height={380}
-                        src={imgSrc}
-                        alt={p.title}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                        onError={(e) => { (e.target as HTMLImageElement).src = FALLBACK_IMAGE }}
-                      />
-                      {p.tag && <span className="psc-badge">{p.tag}</span>}
-                      {p.is_featured && (
-                        <span className="psc-featured-badge">Featured</span>
-                      )}
-                      <div className="psc-arr">
-                        <svg width={13} height={13} viewBox="0 0 35 35">
-                          <path d="M0.173267 0H34.9999V6.51953L6.58414 34.9996L0 28.4801L19.4059 9.2646L0.173267 9.43616V0Z"/>
-                          <path d="M34.999 34.9996V13.0391L25.6426 22.3037V34.9996H34.999Z"/>
-                        </svg>
-                      </div>
-                    </div>
-
-                    <div className="psc-body">
-                      <div className="psc-client">
-                        <div className="psc-logo">
-                          <Image
-                            width={42} height={42}
-                            src={logoSrc}
-                            alt={p.client || p.title}
-                            onError={(e) => { (e.target as HTMLImageElement).src = FALLBACK_LOGO }}
-                          />
-                        </div>
-                        <div className="psc-client-info">
-                          <h5>{p.client || p.title}</h5>
-                          {location && (
-                            <span>
-                              <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-                                <circle cx="12" cy="10" r="3"/>
-                              </svg>
-                              {location}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      <p>{p.description}</p>
-
-                      <Link
-                        href={p.contact_url || '/contact'}
-                        className="psc-link"
-                        target={p.contact_url ? '_blank' : undefined}
-                        rel={p.contact_url ? 'noopener noreferrer' : undefined}
-                      >
-                        Get In Touch
-                        <svg width={12} height={12} viewBox="0 0 35 35">
-                          <path d="M0.173267 0H34.9999V6.51953L6.58414 34.9996L0 28.4801L19.4059 9.2646L0.173267 9.43616V0Z"/>
-                          <path d="M34.999 34.9996V13.0391L25.6426 22.3037V34.9996H34.999Z"/>
-                        </svg>
-                      </Link>
-                    </div>
-                  </div>
-                )
-              })}
+              {projects.map((p, i) => (
+                <ProjectCard key={p.id} project={p} index={i} />
+              ))}
             </div>
           )}
 

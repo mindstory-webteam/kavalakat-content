@@ -31,6 +31,7 @@ interface BlogPost {
   created_at: string
   published_at: string
   updated_at?: string
+  bottom_html?: string  // ✅ NEW: Bottom HTML Section from CMS
 }
 
 interface SidebarPost {
@@ -66,6 +67,16 @@ function ContentRenderer({ html }: { html: string }) {
       className="blog-api-content"
       dangerouslySetInnerHTML={{ __html: html }}
       style={{ lineHeight: 1.8, fontSize: '1rem' }}
+    />
+  )
+}
+
+// ✅ NEW: Bottom HTML renderer — renders injected CMS HTML below main content
+function BottomHtmlRenderer({ html }: { html: string }) {
+  return (
+    <div
+      className="blog-bottom-html"
+      dangerouslySetInnerHTML={{ __html: html }}
     />
   )
 }
@@ -217,6 +228,11 @@ export default function BlogDetailPage() {
                       <ContentRenderer html={post.content} />
                     ) : (
                       <p style={{ opacity: 0.6 }}>No content available for this post.</p>
+                    )}
+
+                    {/* ✅ NEW: Bottom HTML Section — injected from CMS below main content */}
+                    {post.bottom_html && (
+                      <BottomHtmlRenderer html={post.bottom_html} />
                     )}
                   </div>
 
@@ -407,6 +423,92 @@ export default function BlogDetailPage() {
         }
         .blog-api-content strong { font-weight: 700; }
         .blog-api-content a { text-decoration: underline; }
+
+        /* ✅ NEW: Bottom HTML Section styles */
+        .blog-bottom-html {
+          margin-top: 2.5rem;
+          padding-top: 2rem;
+          border-top: 1px solid rgba(128, 128, 128, 0.2);
+        }
+        .blog-bottom-html h1,
+        .blog-bottom-html h2,
+        .blog-bottom-html h3,
+        .blog-bottom-html h4 {
+          margin-top: 0;
+          margin-bottom: 1rem;
+          font-weight: 700;
+          line-height: 1.3;
+        }
+        .blog-bottom-html p {
+          margin-bottom: 1.25rem;
+          line-height: 1.8;
+        }
+        .blog-bottom-html ul,
+        .blog-bottom-html ol {
+          margin-bottom: 1.25rem;
+          padding-left: 1.5rem;
+        }
+        .blog-bottom-html li {
+          margin-bottom: 0.5rem;
+        }
+        .blog-bottom-html img {
+          max-width: 100%;
+          height: auto;
+          border-radius: 8px;
+          margin: 1.5rem 0;
+        }
+        .blog-bottom-html a {
+          text-decoration: underline;
+        }
+        .blog-bottom-html table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-bottom: 1.5rem;
+        }
+        .blog-bottom-html th,
+        .blog-bottom-html td {
+          border: 1px solid #ddd;
+          padding: 8px 12px;
+          text-align: left;
+        }
+        .blog-bottom-html strong {
+          font-weight: 700;
+        }
+        /* CTA banner pattern — common use case for bottom_html */
+        .blog-bottom-html .cta-banner {
+          background: rgba(128, 128, 128, 0.08);
+          border: 1px solid rgba(128, 128, 128, 0.2);
+          border-radius: 8px;
+          padding: 1.5rem 2rem;
+          margin: 1rem 0;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          flex-wrap: wrap;
+          gap: 1rem;
+        }
+        .blog-bottom-html .cta-banner h3 {
+          margin: 0;
+          font-size: 1.1rem;
+        }
+        .blog-bottom-html .btn {
+          display: inline-block;
+          padding: 10px 24px;
+          border-radius: 4px;
+          font-weight: 600;
+          text-decoration: none !important;
+          transition: opacity 0.2s;
+          cursor: pointer;
+        }
+        .blog-bottom-html .btn:hover {
+          opacity: 0.85;
+        }
+        /* YouTube / iframe embeds */
+        .blog-bottom-html iframe {
+          max-width: 100%;
+          border-radius: 8px;
+          margin: 1rem 0;
+        }
       `}</style>
 
       <FooterTop />
