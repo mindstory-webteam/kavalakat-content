@@ -170,7 +170,7 @@ const Footer = () => {
         <div className="container">
           <div className="footer-bottom">
             <div className="copyright-area">
-              <p>Copyright 2025 <Link href="/">Kavalakat</Link> | Design By <a href="https://mindstory.in/" style={{ color: 'orange' }}>Mindstory</a></p>
+              <p>Copyright 2026 <Link href="/">Kavalakat</Link> | Design By <a href="https://mindstory.in/" style={{ color: 'orange' }}>Mindstory</a></p>
             </div>
             <ul className="social-area">
               {contactInfo?.linkedin  && <li><a href={contactInfo.linkedin}  target="_blank" rel="noopener noreferrer"><i className="bi bi-linkedin" />LinkedIn</a></li>}
