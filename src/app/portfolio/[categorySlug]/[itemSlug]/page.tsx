@@ -389,7 +389,7 @@ const PortfolioDetailPage = () => {
 
             <div className="col-lg-8 wow animate fadeInLeft" data-wow-delay="200ms" data-wow-duration="1500ms">
               <div className="details-content">
-                <h2>{item.hero_title || item.about_title || `Kavalakat — ${item.name}`}</h2>
+                <h2>{ item.about_title || `Kavalakat — ${item.name}`}</h2>
                 {heroParas.length > 0
                   ? heroParas.map((p, i) => <p key={i} style={{ textAlign: 'justify' }}>{p}</p>)
                   : <p style={{ textAlign: 'justify', opacity: 0.6 }}>{item.description || item.name}</p>
