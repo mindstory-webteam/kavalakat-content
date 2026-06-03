@@ -3,14 +3,14 @@
 import React, { useEffect, useReducer, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { getContact, buildPortfolioHref, normalisePortfolioItem, getAllPortfolioItems } from '@/lib/api'
-import type { Contact, PortfolioItem } from '@/lib/api'
+import { getContact } from '@/lib/api'
+import type { Contact } from '@/lib/api'
+import { useNavData } from '@/hooks/useNavData'
+import type { NavEntry } from '@/hooks/useNavData'
 
 interface BlogNavItem { title: string; slug: string }
-interface NavEntry    { name: string; href: string }
-interface NavGroup    { label: string; slug: string; order: number; items: NavEntry[] }
 
-// ── State / Reducer ───────────────────────────────────────────────────────
+// ── State / Reducer ───────────────────────────────────────────────────────────
 interface State { activeMenu: string; isSidebarOpen: boolean; isRightSidebar: boolean; scrollY: number }
 type Action =
   | { type: 'TOGGLE_MENU';        menu: string }
@@ -30,28 +30,21 @@ function reducer(s: State, a: Action): State {
   }
 }
 
-// Slugs that belong to the "services" world
-const SERVICE_CATEGORY_SLUGS = new Set(['services', 'service', 'hospitality'])
-
-// ── Fixed display order: trading=1, distribution=2, service/services=3, rest by API order ──
-const SLUG_PRIORITY: Record<string, number> = {
-  trading: 1, distribution: 2,
-  services: 3, service: 3, hospitality: 3,
-}
-
 const Header: React.FC = () => {
-  const [state,       dispatch]     = useReducer(reducer, init)
-  const [navGroups,   setNavGroups] = useState<NavGroup[]>([])
-  const [blogNav,     setBlogNav]   = useState<BlogNavItem[]>([])
+  const [state,       dispatch]       = useReducer(reducer, init)
+  const [blogNav,     setBlogNav]     = useState<BlogNavItem[]>([])
   const [contactInfo, setContactInfo] = useState<Contact | null>(null)
   const pathname = usePathname() as string
 
+  // ── Shared nav data (same hook as Footer & InnerPageHeader) ──────────────
+  const { navGroups } = useNavData()
+
   const API = process.env.NEXT_PUBLIC_API_URL || 'https://api.kavalakat.com/api'
 
-  // ── Contact ──────────────────────────────────────────────────────────────
+  // ── Contact ───────────────────────────────────────────────────────────────
   useEffect(() => { getContact().then(d => { if (d) setContactInfo(d) }) }, [])
 
-  // ── Blog nav ─────────────────────────────────────────────────────────────
+  // ── Blog nav ──────────────────────────────────────────────────────────────
   useEffect(() => {
     const load = async () => {
       try {
@@ -63,109 +56,6 @@ const Header: React.FC = () => {
           posts.filter((p: any) => p.slug && p.title).slice(0, 6)
                .map((p: any) => ({ title: p.title, slug: p.slug }))
         )
-      } catch {}
-    }
-    load()
-  }, [])
-
-  // ── Portfolio + Services nav ──────────────────────────────────────────────
-  useEffect(() => {
-    const load = async () => {
-      try {
-        // ── 1. Fetch ordered portfolio categories ────────────────────────
-        let orderedCategories: Array<{ id: number; name: string; slug: string; order: number; is_active: boolean }> = []
-        try {
-          const catRes = await fetch(`${API}/portfolio/categories/`, {
-            headers: { Accept: 'application/json' }, cache: 'no-store',
-          })
-          if (catRes.ok) {
-            const catJson = await catRes.json()
-            const rawCats: any[] = catJson?.data ?? catJson?.results ?? (Array.isArray(catJson) ? catJson : [])
-            orderedCategories = rawCats
-              .filter((c: any) => c.is_active !== false)
-              .sort((a: any, b: any) => {
-                const pa = SLUG_PRIORITY[a.slug?.toLowerCase()] ?? (10 + (a.order ?? 99))
-                const pb = SLUG_PRIORITY[b.slug?.toLowerCase()] ?? (10 + (b.order ?? 99))
-                return pa - pb
-              })
-          }
-        } catch {}
-
-        // ── 2. Fetch ALL portfolio items, group by category_slug ─────────
-        const all = await getAllPortfolioItems()
-        const catMap = new Map<string, NavEntry[]>()
-        all.forEach((item: PortfolioItem) => {
-          if (item.is_active === false) return
-          const norm  = normalisePortfolioItem(item)
-          const href  = buildPortfolioHref(norm)
-          const entry: NavEntry = { name: norm.name, href }
-          const cat   = (norm.category_slug || '').toLowerCase()
-          if (!catMap.has(cat)) catMap.set(cat, [])
-          catMap.get(cat)!.push(entry)
-        })
-
-        // ── 3. Fetch ALL services from /api/services/ (paginated) ────────
-        const serviceApiItems: NavEntry[] = []
-        let page = 1
-        while (true) {
-          try {
-            const res = await fetch(`${API}/services/?page=${page}`, {
-              headers: { Accept: 'application/json' }, cache: 'no-store',
-            })
-            if (!res.ok) break
-            const json = await res.json()
-            const raw: any[] = json?.data ?? json?.results ?? (Array.isArray(json) ? json : [])
-            raw
-              .filter((s: any) => s.is_active !== false && s.slug && s.name)
-              .forEach((s: any) => serviceApiItems.push({ name: s.name, href: `/services/${s.slug}` }))
-            const nextUrl: string | null = json?.pagination?.next ?? json?.next ?? null
-            if (!nextUrl) break
-            page++
-          } catch { break }
-        }
-
-        // ── 4. Build ordered NavGroups ───────────────────────────────────
-        const groups: NavGroup[] = []
-
-        if (orderedCategories.length > 0) {
-          for (const cat of orderedCategories) {
-            const slug         = cat.slug.toLowerCase()
-            const isServiceCat = SERVICE_CATEGORY_SLUGS.has(slug)
-
-            if (isServiceCat) {
-              const portfolioServiceItems = catMap.get(slug) ?? []
-              const merged = [...portfolioServiceItems, ...serviceApiItems]
-              const seen   = new Set<string>()
-              const unique = merged.filter(e => { if (seen.has(e.href)) return false; seen.add(e.href); return true })
-              if (unique.length > 0) {
-                groups.push({ label: cat.name.toUpperCase(), slug, order: cat.order, items: unique })
-              }
-            } else {
-              const items = catMap.get(slug) ?? []
-              if (items.length > 0) {
-                groups.push({ label: cat.name.toUpperCase(), slug, order: cat.order, items })
-              }
-            }
-          }
-        } else {
-          // Fallback: no categories API
-          catMap.forEach((items, slug) => {
-            if (items.length === 0) return
-            const isServiceCat = SERVICE_CATEGORY_SLUGS.has(slug)
-            const finalItems   = isServiceCat
-              ? [...items, ...serviceApiItems].filter((e, i, arr) => arr.findIndex(x => x.href === e.href) === i)
-              : items
-            const priority = SLUG_PRIORITY[slug] ?? 99
-            groups.push({ label: slug.toUpperCase(), slug, order: priority, items: finalItems })
-          })
-          const hasServiceCol = groups.some(g => SERVICE_CATEGORY_SLUGS.has(g.slug))
-          if (!hasServiceCol && serviceApiItems.length > 0) {
-            groups.push({ label: 'SERVICES', slug: 'services', order: SLUG_PRIORITY['services'], items: serviceApiItems })
-          }
-          groups.sort((a, b) => a.order - b.order)
-        }
-
-        setNavGroups(groups)
       } catch {}
     }
     load()

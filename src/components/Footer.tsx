@@ -2,25 +2,9 @@
 "use client"
 import Link from 'next/link'
 import React, { useEffect, useState } from 'react'
-import { getContact, buildPortfolioHref, normalisePortfolioItem } from '@/lib/api'
-import type { Contact, PortfolioItem } from '@/lib/api'
-
-const API = process.env.NEXT_PUBLIC_API_URL || "https://api.kavalakat.com/api"
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-interface NavItem   { name: string; href: string }
-interface NavGroups { trading: NavItem[]; distribution: NavItem[]; services: NavItem[] }
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-function unwrapEnvelope(json: any): any {
-  if (json !== null && typeof json === "object" && !Array.isArray(json) && "success" in json && "data" in json)
-    return json.data
-  return json
-}
-
-function toSlug(s: string): string {
-  return (s || '').toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-}
+import { getContact } from '@/lib/api'
+import type { Contact } from '@/lib/api'
+import { useNavData } from '@/hooks/useNavData'
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 const LinkArrow = () => (
@@ -42,103 +26,13 @@ const NavLink = ({ href, label }: { href: string; label: string }) => (
 // ─── Main Component ───────────────────────────────────────────────────────────
 const Footer = () => {
   const [contactInfo, setContactInfo] = useState<Contact | null>(null)
-  const [navItems,    setNavItems]    = useState<NavGroups>({ trading: [], distribution: [], services: [] })
+
+  // ── Shared nav data (same hook as Header & InnerPageHeader) ───────────────
+  const { footer: navItems } = useNavData()
 
   // ── Fetch contact ──────────────────────────────────────────────────────────
   useEffect(() => {
     getContact().then((data) => { if (data) setContactInfo(data) })
-  }, [])
-
-  // ── Fetch portfolio + services — identical strategy to Header ──────────────
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const trading:      NavItem[] = []
-        const distribution: NavItem[] = []
-        const services:     NavItem[] = []
-
-        // ── 1. Portfolio items (trading + distribution) ──────────────────────
-        try {
-          const res = await fetch(`${API}/portfolio/page/`)
-          if (res.ok) {
-            const json = await res.json()
-            const page = unwrapEnvelope(json)
-            const hasData = page?.trading?.length || page?.distribution?.length
-            if (hasData) {
-              ;(page.trading ?? []).forEach((i: PortfolioItem) => {
-                const n = normalisePortfolioItem(i)
-                trading.push({ name: n.name, href: buildPortfolioHref(n) })
-              })
-              ;(page.distribution ?? []).forEach((i: PortfolioItem) => {
-                const n = normalisePortfolioItem(i)
-                distribution.push({ name: n.name, href: buildPortfolioHref(n) })
-              })
-              // Also pull any services the portfolio/page endpoint still returns
-              ;(page.services ?? []).forEach((i: PortfolioItem) => {
-                const n = normalisePortfolioItem(i)
-                services.push({ name: n.name, href: buildPortfolioHref(n) })
-              })
-            }
-          }
-        } catch { /* fall through */ }
-
-        // If portfolio/page returned nothing, try flat items list
-        if (!trading.length && !distribution.length) {
-          try {
-            const res = await fetch(`${API}/portfolio/items/`)
-            if (res.ok) {
-              const json = await res.json()
-              const data = unwrapEnvelope(json)
-              const allItems: any[] = Array.isArray(data) ? data : (data.results ?? data.items ?? [])
-              allItems
-                .filter((i: any) => i.is_active !== false)
-                .sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0))
-                .forEach((item: any) => {
-                  const n    = normalisePortfolioItem(item)
-                  const href = buildPortfolioHref(n)
-                  const entry = { name: n.name, href }
-                  if (href.startsWith('/product/'))           trading.push(entry)
-                  else if (href.startsWith('/distribution/')) distribution.push(entry)
-                  else if (href.startsWith('/services/'))     services.push(entry)
-                })
-            }
-          } catch { /* silently ignore */ }
-        }
-
-        // ── 2. Services from /api/services/ endpoint (authoritative) ─────────
-        // Always fetch this — mirrors Header exactly
-        try {
-          let url: string | null = `${API}/services/?is_active=true`
-          const serviceItems: NavItem[] = []
-          while (url) {
-            const res: Response = await fetch(url, { cache: 'no-store' })
-            if (!res.ok) break
-            const json = await res.json()
-            const items: any[] = Array.isArray(json?.results)
-              ? json.results
-              : Array.isArray(json?.data)
-                ? json.data
-                : Array.isArray(json) ? json : []
-            items.forEach((svc: any) => {
-              if (svc.is_active === false) return
-              const slug = svc.slug || toSlug(svc.name)
-              serviceItems.push({ name: svc.name, href: `/services/${slug}` })
-            })
-            url = json?.next ?? null
-          }
-          if (serviceItems.length) {
-            // Replace anything the portfolio endpoint put in services with fresh data
-            services.length = 0
-            serviceItems.forEach(s => services.push(s))
-          }
-        } catch { /* silently ignore */ }
-
-        setNavItems({ trading, distribution, services })
-      } catch {
-        // silently ignore — columns stay empty
-      }
-    }
-    load()
   }, [])
 
   const fullAddress = contactInfo
@@ -248,6 +142,20 @@ const Footer = () => {
                       </div>
                     )}
 
+                    {/* Extra categories (beyond trading / distribution / services) */}
+                    {navItems.extra.map(group => (
+                      <div key={group.slug} className="col-xl-3 col-lg-3 col-md-3 col-sm-6 col-6 d-flex justify-content-lg-center">
+                        <div className="footer-widget">
+                          <div className="widget-title"><h5>{group.label}</h5></div>
+                          <ul className="footer-nav-list">
+                            {group.items.map(n => (
+                              <NavLink key={n.href} href={n.href} label={n.name} />
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+                    ))}
+
                   </div>
                 </div>
               </div>
@@ -319,7 +227,7 @@ const Footer = () => {
           }
         }
 
-        /* ── Nav list styles (unchanged) ── */
+        /* ── Nav list styles ── */
         .footer-nav-list{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:0}
         .footer-nav-list li{border-bottom:1px solid rgba(255,255,255,0.07)}
         .footer-nav-list li:first-child{border-top:1px solid rgba(255,255,255,0.07)}

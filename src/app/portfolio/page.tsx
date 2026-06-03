@@ -1,9 +1,5 @@
 "use client"
-// ✅ FILE PATH: src/app/product/page.tsx
-//
-// Product listing page — fetches ALL categories and ALL portfolio items
-// (handles pagination automatically) from the Kavalakat CMS API.
-// Also fetches /api/services/ and merges them into the SERVICES tab.
+// FILE PATH: src/app/product/page.tsx
 
 import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
@@ -44,7 +40,6 @@ interface PortfolioItem {
   is_featured: boolean
   is_active: boolean
   order: number
-  // source flag — 'portfolio' | 'service'
   _source?: 'portfolio' | 'service'
 }
 
@@ -54,8 +49,10 @@ const BASE        = 'https://api.kavalakat.com/api/portfolio'
 const API         = 'https://api.kavalakat.com/api'
 const PLACEHOLDER = '/assets/new-images/bm/bm-3.jpeg'
 
-// These portfolio category slugs are treated as "services"
-const SERVICE_SLUGS = new Set(['services', 'service', 'hospitality'])
+// Portfolio category slugs that are "services" — items in these categories
+// come from /api/portfolio/items/ and link to /portfolio/[cat]/[name]
+// NOT to /services/[slug]
+const SERVICE_CATEGORY_SLUGS = new Set(['services', 'service', 'hospitality'])
 
 // ─── API helpers ──────────────────────────────────────────────────────────────
 
@@ -103,24 +100,24 @@ async function fetchAllServiceItems(): Promise<PortfolioItem[]> {
         .filter((s: any) => s.is_active !== false && s.slug && s.name)
         .forEach((s: any) => {
           collected.push({
-            id:            s.id,
-            name:          s.name,
-            slug:          s.slug,
-            description:   s.description ?? '',
-            image_url:     s.image_url ?? s.image ?? null,
+            id:               s.id,
+            name:             s.name,
+            slug:             s.slug,            // ← real API slug, used for href
+            description:      s.description ?? '',
+            image_url:        s.image_url ?? s.image ?? null,
             banner_image_url: null,
-            tags:          '',
-            category:      0,
-            category_name: 'Services',
-            category_slug: 'services',
-            hero_title:    s.description ?? '',
-            about_title:   '',
-            features_title:'',
-            brands_heading:'',
-            is_featured:   s.is_featured ?? false,
-            is_active:     true,
-            order:         s.order ?? 0,
-            _source:       'service',
+            tags:             '',
+            category:         0,
+            category_name:    'Services',
+            category_slug:    'services',
+            hero_title:       s.description ?? '',
+            about_title:      '',
+            features_title:   '',
+            brands_heading:   '',
+            is_featured:      s.is_featured ?? false,
+            is_active:        true,
+            order:            s.order ?? 0,
+            _source:          'service',          // ← marks as /api/services/ item
           })
         })
       const nextUrl: string | null = json?.pagination?.next ?? json?.next ?? null
@@ -131,14 +128,44 @@ async function fetchAllServiceItems(): Promise<PortfolioItem[]> {
   return collected
 }
 
+// ─── Slug helper ──────────────────────────────────────────────────────────────
+
+function slugify(str: string): string {
+  return str
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+}
+
+/**
+ * Build the correct href for a portfolio item.
+ *
+ * Rules:
+ *  - _source === 'service'  → /services/[item.slug]
+ *    These come from /api/services/ and have a real CMS slug.
+ *
+ *  - _source === 'portfolio', even if category is "services" / "hospitality"
+ *    → /portfolio/[category_slug]/[name-slugified]
+ *    These are portfolio items that happen to sit in a service-named category.
+ *    They must NOT go to /services/ because that page fetches from /api/services/.
+ */
+function buildHref(item: PortfolioItem): string {
+  if (item._source === 'service') {
+    return `/services/${item.slug ?? slugify(item.name)}`
+  }
+  return `/portfolio/${item.category_slug}/${slugify(item.name)}`
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 const ProductPage = () => {
-  const [categories,  setCategories]  = useState<Category[]>([])
-  const [allItems,    setAllItems]    = useState<PortfolioItem[]>([])
-  const [activeSlug,  setActiveSlug]  = useState<string>('all')
-  const [loading,     setLoading]     = useState(true)
-  const [error,       setError]       = useState(false)
+  const [categories, setCategories] = useState<Category[]>([])
+  const [allItems,   setAllItems]   = useState<PortfolioItem[]>([])
+  const [activeSlug, setActiveSlug] = useState<string>('all')
+  const [loading,    setLoading]    = useState(true)
+  const [error,      setError]      = useState(false)
 
   useEffect(() => {
     const load = async () => {
@@ -151,10 +178,8 @@ const ProductPage = () => {
           fetchAllServiceItems(),
         ])
 
-        // ── Merge service items into one unified list ──────────────────────
-        // Portfolio items with service category slugs + /api/services/ items
-        // Deduplicate by name (lowercased) to avoid showing same item twice
-        const seen = new Set<string>()
+        // Deduplicate by name — portfolio wins over service if same name
+        const seen   = new Set<string>()
         const merged: PortfolioItem[] = []
 
         for (const item of portfolioItems) {
@@ -166,27 +191,20 @@ const ProductPage = () => {
           if (!seen.has(key)) { seen.add(key); merged.push(item) }
         }
 
-        // ── Ensure a SERVICES tab exists in categories ─────────────────────
-        // If the API doesn't return a "services" category but we have service
-        // items, inject a synthetic category for the tab.
-        const hasServiceCat = cats.some(c => SERVICE_SLUGS.has(c.slug.toLowerCase()))
-        const serviceCount  = merged.filter(i => SERVICE_SLUGS.has(i.category_slug.toLowerCase()) || i._source === 'service').length
+        // Ensure a SERVICES tab exists if we have service items
+        const hasServiceCat = cats.some(c => SERVICE_CATEGORY_SLUGS.has(c.slug.toLowerCase()))
+        const serviceCount  = merged.filter(i =>
+          SERVICE_CATEGORY_SLUGS.has(i.category_slug.toLowerCase()) || i._source === 'service'
+        ).length
 
         const finalCats = hasServiceCat
-          ? cats.map(c =>
-              SERVICE_SLUGS.has(c.slug.toLowerCase())
-                ? { ...c, item_count: serviceCount }
-                : c
-            )
+          ? cats
           : serviceCount > 0
-            ? [
-                ...cats,
-                {
-                  id: -1, name: 'Services', slug: 'services',
-                  description: '', icon: '', order: 0,
-                  is_active: true, item_count: serviceCount,
-                },
-              ].sort((a, b) => a.order - b.order)
+            ? [...cats, {
+                id: -1, name: 'Services', slug: 'services',
+                description: '', icon: '', order: 999,
+                is_active: true, item_count: serviceCount,
+              }].sort((a, b) => a.order - b.order)
             : cats
 
         setCategories(finalCats)
@@ -200,20 +218,16 @@ const ProductPage = () => {
     load()
   }, [])
 
-  // ── Filter logic ──────────────────────────────────────────────────────────
+  // ── Filter ────────────────────────────────────────────────────────────────
   const visibleItems = (() => {
     if (activeSlug === 'all') return allItems
-    // "services" tab shows both portfolio service-category items AND /api/services/ items
-    if (SERVICE_SLUGS.has(activeSlug)) {
+    if (SERVICE_CATEGORY_SLUGS.has(activeSlug)) {
       return allItems.filter(i =>
-        SERVICE_SLUGS.has(i.category_slug.toLowerCase()) || i._source === 'service'
+        SERVICE_CATEGORY_SLUGS.has(i.category_slug.toLowerCase()) || i._source === 'service'
       )
     }
     return allItems.filter(i => i.category_slug === activeSlug)
   })()
-
-  // ── Total count for "All" tab ─────────────────────────────────────────────
-  const totalCount = allItems.length
 
   // ── Loading ───────────────────────────────────────────────────────────────
   if (loading) return (
@@ -227,7 +241,6 @@ const ProductPage = () => {
     </>
   )
 
-  // ── Error ─────────────────────────────────────────────────────────────────
   if (error) return (
     <>
       <InnerPageHeader />
@@ -256,22 +269,18 @@ const ProductPage = () => {
       <div className="product-filter-section pt-80">
         <div className="container">
           <div className="filter-tab-wrapper">
-
-            {/* ALL tab */}
             <button
               className={`filter-tab-btn ${activeSlug === 'all' ? 'active' : ''}`}
               onClick={() => setActiveSlug('all')}
             >
-              All
-              <span className="tab-count">{totalCount}</span>
+              All <span className="tab-count">{allItems.length}</span>
             </button>
 
-            {/* One tab per category — SERVICE tab shows combined count */}
             {categories.map(cat => {
-              const isServiceTab = SERVICE_SLUGS.has(cat.slug.toLowerCase())
+              const isServiceTab = SERVICE_CATEGORY_SLUGS.has(cat.slug.toLowerCase())
               const count = isServiceTab
                 ? allItems.filter(i =>
-                    SERVICE_SLUGS.has(i.category_slug.toLowerCase()) || i._source === 'service'
+                    SERVICE_CATEGORY_SLUGS.has(i.category_slug.toLowerCase()) || i._source === 'service'
                   ).length
                 : allItems.filter(i => i.category_slug === cat.slug).length
 
@@ -281,8 +290,7 @@ const ProductPage = () => {
                   className={`filter-tab-btn ${activeSlug === cat.slug ? 'active' : ''}`}
                   onClick={() => setActiveSlug(cat.slug)}
                 >
-                  {cat.name}
-                  <span className="tab-count">{count}</span>
+                  {cat.name} <span className="tab-count">{count}</span>
                 </button>
               )
             })}
@@ -290,7 +298,7 @@ const ProductPage = () => {
         </div>
       </div>
 
-      {/* ── Product Grid ── */}
+      {/* ── Grid ── */}
       <div className="product-grid-section pt-60 mb-120">
         <div className="container">
           {visibleItems.length === 0 ? (
@@ -319,19 +327,13 @@ const ProductPage = () => {
 // ─── Product Card ─────────────────────────────────────────────────────────────
 
 const ProductCard = ({ item }: { item: PortfolioItem }) => {
-  // Services from /api/services/ → /services/[slug]
-  // Portfolio items → /portfolio/[categorySlug]/[nameSlug]
-  const href = item._source === 'service'
-    ? `/services/${item.slug ?? slugify(item.name)}`
-    : `/portfolio/${item.category_slug}/${slugify(item.name)}`
-
+  const href  = buildHref(item)
   const image = item.image_url || item.banner_image_url || PLACEHOLDER
   const label = item.hero_title || item.about_title || item.features_title || item.category_name
 
   return (
     <Link href={href} className="product-card d-block text-decoration-none">
       <div className="product-card-inner">
-        {/* Image */}
         <div className="product-card-img-wrap">
           <Image
             src={image}
@@ -340,11 +342,8 @@ const ProductCard = ({ item }: { item: PortfolioItem }) => {
             height={260}
             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
           />
-          {/* Category badge */}
           <span className="product-card-badge">{item.category_name}</span>
         </div>
-
-        {/* Body */}
         <div className="product-card-body">
           <h4 className="product-card-title">{item.name}</h4>
           {label && label !== item.name && (
@@ -362,17 +361,6 @@ const ProductCard = ({ item }: { item: PortfolioItem }) => {
   )
 }
 
-// ─── Slug helper ──────────────────────────────────────────────────────────────
-
-function slugify(str: string): string {
-  return str
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-}
-
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const loaderCss = `
@@ -387,171 +375,38 @@ const loaderCss = `
 const pageCss = `
   ${loaderCss}
 
-  /* ── Filter Tabs ── */
   .product-filter-section { background: #fff; }
+  .filter-tab-wrapper { display:flex; flex-wrap:wrap; gap:12px; padding-bottom:32px; border-bottom:2px solid #f0f0f0; }
+  .filter-tab-btn { display:inline-flex; align-items:center; gap:8px; padding:10px 22px; border:2px solid #e0e0e0; border-radius:50px; background:#fff; color:#555; font-size:.9rem; font-weight:600; cursor:pointer; transition:all .25s ease; text-transform:uppercase; letter-spacing:.5px; }
+  .filter-tab-btn:hover { border-color:#000; color:#000; }
+  .filter-tab-btn.active { background:#000; border-color:#000; color:#fff; }
+  .tab-count { display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:50%; font-size:.75rem; font-weight:700; background:rgba(0,0,0,.1); }
+  .filter-tab-btn.active .tab-count { background:rgba(255,255,255,.25); }
 
-  .filter-tab-wrapper {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-    padding-bottom: 32px;
-    border-bottom: 2px solid #f0f0f0;
+  .product-card { color:inherit; cursor:pointer; }
+  .product-card-inner { border:1px solid #e8e8e8; border-radius:12px; overflow:hidden; background:#fff; transition:transform .3s ease,box-shadow .3s ease; height:100%; display:flex; flex-direction:column; }
+  .product-card:hover .product-card-inner { transform:translateY(-6px); box-shadow:0 20px 50px rgba(0,0,0,.12); }
+  .product-card-img-wrap { position:relative; width:100%; height:220px; overflow:hidden; background:#f5f5f5; flex-shrink:0; }
+  .product-card-img-wrap img { transition:transform .5s ease; }
+  .product-card:hover .product-card-img-wrap img { transform:scale(1.06); }
+  .product-card-badge { position:absolute; top:14px; left:14px; background:#000; color:#fff; font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.8px; padding:4px 12px; border-radius:50px; }
+  .product-card-body { padding:20px 24px 22px; display:flex; flex-direction:column; flex:1; position:relative; }
+  .product-card-title { font-size:1.15rem; font-weight:800; color:#111; margin:0 0 6px; text-transform:uppercase; letter-spacing:.5px; line-height:1.3; padding-right:36px; }
+  .product-card-sub { font-size:.85rem; color:#888; margin:0; line-height:1.5; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .product-card-arrow { position:absolute; bottom:22px; right:22px; width:36px; height:36px; border-radius:50%; background:#f5f5f5; display:flex; align-items:center; justify-content:center; color:#000; transition:background .25s,color .25s,transform .25s; }
+  .product-card:hover .product-card-arrow { background:#000; color:#fff; transform:rotate(45deg); }
+
+  .pt-80 { padding-top:80px; }
+  .pt-60 { padding-top:60px; }
+
+  @media(max-width:768px){
+    .filter-tab-wrapper { gap:8px; }
+    .filter-tab-btn { padding:8px 16px; font-size:.8rem; }
+    .product-card-img-wrap { height:190px; }
   }
-
-  .filter-tab-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 22px;
-    border: 2px solid #e0e0e0;
-    border-radius: 50px;
-    background: #fff;
-    color: #555;
-    font-size: 0.9rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all .25s ease;
-    text-transform: uppercase;
-    letter-spacing: .5px;
-  }
-
-  .filter-tab-btn:hover {
-    border-color: #000;
-    color: #000;
-  }
-
-  .filter-tab-btn.active {
-    background: #000;
-    border-color: #000;
-    color: #fff;
-  }
-
-  .tab-count {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    font-size: 0.75rem;
-    font-weight: 700;
-    background: rgba(0,0,0,.1);
-  }
-
-  .filter-tab-btn.active .tab-count {
-    background: rgba(255,255,255,.25);
-  }
-
-  /* ── Product Card ── */
-  .product-card { color: inherit; cursor: pointer; }
-
-  .product-card-inner {
-    border: 1px solid #e8e8e8;
-    border-radius: 12px;
-    overflow: hidden;
-    background: #fff;
-    transition: transform .3s ease, box-shadow .3s ease;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .product-card:hover .product-card-inner {
-    transform: translateY(-6px);
-    box-shadow: 0 20px 50px rgba(0,0,0,.12);
-  }
-
-  .product-card-img-wrap {
-    position: relative;
-    width: 100%;
-    height: 220px;
-    overflow: hidden;
-    background: #f5f5f5;
-    flex-shrink: 0;
-  }
-
-  .product-card-img-wrap img { transition: transform .5s ease; }
-  .product-card:hover .product-card-img-wrap img { transform: scale(1.06); }
-
-  .product-card-badge {
-    position: absolute;
-    top: 14px;
-    left: 14px;
-    background: #000;
-    color: #fff;
-    font-size: 0.7rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: .8px;
-    padding: 4px 12px;
-    border-radius: 50px;
-  }
-
-  .product-card-body {
-    padding: 20px 24px 22px;
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-    position: relative;
-  }
-
-  .product-card-title {
-    font-size: 1.15rem;
-    font-weight: 800;
-    color: #111;
-    margin: 0 0 6px;
-    text-transform: uppercase;
-    letter-spacing: .5px;
-    line-height: 1.3;
-    padding-right: 36px;
-  }
-
-  .product-card-sub {
-    font-size: 0.85rem;
-    color: #888;
-    margin: 0;
-    line-height: 1.5;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-
-  .product-card-arrow {
-    position: absolute;
-    bottom: 22px;
-    right: 22px;
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background: #f5f5f5;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #000;
-    transition: background .25s, color .25s, transform .25s;
-  }
-
-  .product-card:hover .product-card-arrow {
-    background: #000;
-    color: #fff;
-    transform: rotate(45deg);
-  }
-
-  /* ── Spacing helpers ── */
-  .pt-80 { padding-top: 80px; }
-  .pt-60 { padding-top: 60px; }
-
-  /* ── Responsive ── */
-  @media (max-width: 768px) {
-    .filter-tab-wrapper { gap: 8px; }
-    .filter-tab-btn { padding: 8px 16px; font-size: 0.8rem; }
-    .product-card-img-wrap { height: 190px; }
-  }
-
-  @media (max-width: 576px) {
-    .product-card-img-wrap { height: 180px; }
-    .product-card-title { font-size: 1rem; }
+  @media(max-width:576px){
+    .product-card-img-wrap { height:180px; }
+    .product-card-title { font-size:1rem; }
   }
 `
 
