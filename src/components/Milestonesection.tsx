@@ -25,27 +25,42 @@ const FALLBACK_IMAGE = "/assets/new-images/projects/project-1.jpg";
 
 async function fetchMilestones(): Promise<Milestone[]> {
   try {
-    const res = await fetch(`${API_BASE}/milestones/`, {
-      headers: { "Content-Type": "application/json" },
-      cache: "no-store",
-    });
+    let allMilestones: Milestone[] = [];
+    let nextUrl: string | null = `${API_BASE}/milestones/`;
 
-    if (!res.ok) {
-      console.warn(`[API] /milestones/ returned ${res.status}`);
-      return [];
+    while (nextUrl) {
+      const res = await fetch(nextUrl, {
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+      });
+
+      if (!res.ok) {
+        console.warn(`[API] /milestones/ returned ${res.status}`);
+        break;
+      }
+
+      const json = await res.json();
+      console.log("[API] /milestones/", json);
+
+      // Extract data from envelope
+      let pageData: Milestone[] = [];
+      if (json && !Array.isArray(json) && "data" in json) {
+        pageData = json.data as Milestone[];
+        nextUrl = json.pagination?.next ?? null;
+      } else if (json && !Array.isArray(json) && "results" in json) {
+        pageData = json.results as Milestone[];
+        nextUrl = json.next ?? null;
+      } else if (Array.isArray(json)) {
+        pageData = json as Milestone[];
+        nextUrl = null; // No pagination
+      } else {
+        nextUrl = null;
+      }
+
+      allMilestones = [...allMilestones, ...pageData];
     }
 
-    const json = await res.json();
-    console.log("[API] /milestones/", json);
-
-    // Handle { data: [...] } envelope
-    if (json && !Array.isArray(json) && "data" in json) return json.data as Milestone[];
-    // Handle { results: [...] } DRF pagination envelope
-    if (json && !Array.isArray(json) && "results" in json) return json.results as Milestone[];
-    // Bare array
-    if (Array.isArray(json)) return json as Milestone[];
-
-    return [];
+    return allMilestones;
   } catch (err) {
     console.error("[API] Failed to fetch /milestones/:", err);
     return [];
