@@ -429,30 +429,54 @@ const ContactPage = () => {
         </div>
       </div>
 
-        <div className="contact-page-address-section mb-120">
-                <div className="container">
-                   
-                    <ul className="address-list">
-                        <li className="single-address">
-                            <span>THRISSUR</span>
-                            <a href="https://maps.app.goo.gl/1cosSuNMFq8UM1Vw9">H.O. IX/413/4, T.B. Road, S. T. Nagar, Thrissur, Kerala - 680 001</a>
-                        </li>
-                        <li className="single-address">
-                            <span>PALAKKAD</span>
-                            <a href="https://maps.app.goo.gl/Vyd1NL61Q1cgMTvY7">N. H. by-pass Road, Manapullikavu, Palakkad, Kerala - 678 013</a>
-                        </li>
-                        <li className="single-address">
-                            <span>  ERNAKULAM</span>
-                            <a href="https://www.google.com/maps"> First Floor(Near KSRTC), Angamaly-683572, Ernakulam</a>
-                        </li>
-                        <li className="single-address">
-                            <span>THRISSUR</span>
-                            <a href="https://maps.app.goo.gl/1cosSuNMFq8UM1Vw9">H.O. IX/376-2, T.B.Road, S. T. Nagar, Thrissur, Kerala - 680 001</a>
-                        </li>
-                    </ul>
-                    
-                </div>
-            </div>
+       <div className="contact-page-address-section mb-120">
+  <div className="container">
+   
+    <ul className="address-list">
+
+      {/* Branch 1 */}
+      <li className="single-address">
+        <span>THRISSUR</span>
+        <a href="https://maps.app.goo.gl/1cosSuNMFq8UM1Vw9">
+          IX/83-4, Kuttanellur, NH-47 Bye-Pass, Thrissur - 680 014
+        </a>
+      </li>
+
+      {/* Branch 2 */}
+      <li className="single-address">
+        <span>PALAKKAD</span>
+        <a href="https://maps.app.goo.gl/Vyd1NL61Q1cgMTvY7">
+          VII/320, Menonpara, Ozhalapathy, Vadakarapathy Grama Panchayath, Palakkad
+        </a>
+      </li>
+
+      {/* Branch 3 */}
+      <li className="single-address">
+        <span>KANNUR</span>
+        <a href="https://www.google.com/maps">
+          N.PXV-340/D, Near Kairali Heritage Resort, Kattampally, P.O Narath - 670 015, Kannur
+        </a>
+      </li>
+
+      {/* Branch 4 */}
+      <li className="single-address">
+        <span>IDUKKI</span>
+        <a href="https://www.google.com/maps">
+          27/124-I, Kokkappalli, Plamoodu, Irupathekkar, Kattappana, Idukki, Kerala - 685 511
+        </a>
+      </li>
+
+      {/* Branch 5 — Kavalakat Associates */}
+      <li className="single-address">
+        <span>PALAKKAD</span>
+        <a href="https://maps.app.goo.gl/Vyd1NL61Q1cgMTvY7">
+          XVII/306/5, N.H. Road, Manappullikavu, Palakkad, Kerala - 678 013
+        </a>
+      </li>
+
+    </ul>
+  </div>
+</div>
 
       {/* ── Map section ── */}
       {mapEmbedUrl && (
