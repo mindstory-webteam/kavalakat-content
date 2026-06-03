@@ -19,7 +19,7 @@ const Banner = () => {
             button1Link: "/product",
             button2Text: "Let's Discuss",
             button2Link: "/contact",
-            image: "/assets/new-images/home-banner/banner-4.jpeg"
+            image: "/assets/new-images/banner/banner-1.png"
         },
         {
             id: 2,
@@ -28,7 +28,7 @@ const Banner = () => {
             button1Link: "/product",
             button2Text: "Get Quote",
             button2Link: "/contact",
-            image: "/assets/new-images/home-banner/banner-5.jpeg"
+            image: "/assets/new-images/banner/banner-2.jpeg"
         },
         {
             id: 3,
@@ -37,7 +37,7 @@ const Banner = () => {
             button1Link: "/gallery",
             button2Text: "Contact Us",
             button2Link: "/contact",
-            image: "/assets/new-images/home-banner/banner-3.jpeg"
+            image: "/assets/new-images/banner/banner-4.jpeg"
         }
     ];
 

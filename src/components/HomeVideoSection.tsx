@@ -36,7 +36,7 @@ const HomeVideoSection: React.FC = () => {
     return (
         <div className="home3-video-area">
             <div className="video-area">
-                <video autoPlay loop muted playsInline src="/assets/new-images/video/v-1.mp4" />
+                <video autoPlay loop muted playsInline src="/assets/video/main-1.mp4" />
             </div>
             <div className="video-content-wrap">
                 <div className="video-content-btn-area">

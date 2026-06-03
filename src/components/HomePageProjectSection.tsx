@@ -178,14 +178,20 @@ const HomePageProjectSection: React.FC = () => {
                     <SwiperSlide className="swiper-slide" key={project.id}>
                       <div className="project-card-wrap">
                         <div className="project-card">
-                          <div className="project-img">
-                            <img
-                              width={430}
-                              height={450}
-                              src={resolveImage(project, i)}
-                              alt={project.title}
-                            />
-                          </div>
+                         <div className="project-img" style={{ position: 'relative', height: 450, overflow: 'hidden' }}>
+  <img
+    src={resolveImage(project, i)}
+    alt={project.title}
+    style={{
+      position: 'absolute',
+      inset: 0,
+      width: '100%',
+      height: '100%',
+      objectFit: 'cover',
+      display: 'block',
+    }}
+  />
+</div>
                           <div className="project-content-wrap">
                             <div className="project-content">
                               <span>{resolveLocation(project)}</span>

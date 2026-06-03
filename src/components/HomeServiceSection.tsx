@@ -308,17 +308,25 @@ const HomeServiceSection: React.FC = () => {
                 </div>
               </div>
 
-              <div className="services-img">
-                <img
-                  width={250}
-                  height={250}
-                  src={item.imageUrl}
-                  alt={item.name}
-                  onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).src = FALLBACK_IMG;
-                  }}
-                />
-              </div>
+              <div
+  className="services-img"
+  style={{ width: 250, height: 250, overflow: 'hidden', flexShrink: 0 }}
+>
+  <img
+    src={item.imageUrl}
+    alt={item.name}
+    style={{
+      width: '100%',
+      height: '100%',
+      objectFit: 'cover',
+      objectPosition: 'center',
+      display: 'block',
+    }}
+    onError={(e) => {
+      (e.currentTarget as HTMLImageElement).src = FALLBACK_IMG;
+    }}
+  />
+</div>
 
               <div className="content">
                 <p>{item.name}</p>
