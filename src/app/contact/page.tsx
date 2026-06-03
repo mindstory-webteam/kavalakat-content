@@ -26,6 +26,27 @@ const INITIAL_FORM: EnquiryForm = {
 
 type SubmitStatus = 'idle' | 'loading' | 'success' | 'error'
 
+// ─── Map embed URL builder ────────────────────────────────────────────────────
+/**
+ * Builds a reliable Google Maps embed URL from the address fields.
+ * We NEVER use the CMS map_embed_url for the iframe because:
+ *   - Short links (maps.app.goo.gl) are blocked by X-Frame-Options
+ *   - Regular /maps/place/ links are also blocked
+ * Only https://www.google.com/maps/embed?pb=... works in iframes.
+ *
+ * The free approach: use the /maps/embed?q= form with the address as a query.
+ * Google renders a real interactive map — no API key needed.
+ */
+/**
+ * Builds a Google Maps embed URL that shows a red pin on the location.
+ * Uses maps.google.com/maps?q= — no API key required, works in iframes.
+ * Parameters: t=m (standard map), z=15 (street-level zoom), iwloc=near (center pin)
+ */
+function buildEmbedUrlFree(address: string, city: string, state: string, pincode: string): string {
+  const query = [address, city, state, pincode].filter(Boolean).join(', ')
+  return `https://maps.google.com/maps?q=${encodeURIComponent(query)}&t=m&z=15&output=embed&iwloc=near`
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 const ContactPage = () => {
@@ -57,21 +78,19 @@ const ContactPage = () => {
     e.preventDefault()
     setErrorMsg('')
 
-    // ── Client-side validation ─────────────────────────────────────────────
-    if (!form.name.trim())         { setErrorMsg('Please enter your full name.');          return }
-    if (!form.email.trim())        { setErrorMsg('Please enter your email address.');      return }
-    if (!form.phone.trim())        { setErrorMsg('Please enter your phone number.');       return }
-    if (!form.message.trim())      { setErrorMsg('Please enter a message.');               return }
-    if (!form.terms_accepted)      { setErrorMsg('Please accept the Terms & Conditions.'); return }
+    if (!form.name.trim())    { setErrorMsg('Please enter your full name.');          return }
+    if (!form.email.trim())   { setErrorMsg('Please enter your email address.');      return }
+    if (!form.phone.trim())   { setErrorMsg('Please enter your phone number.');       return }
+    if (!form.message.trim()) { setErrorMsg('Please enter a message.');               return }
+    if (!form.terms_accepted) { setErrorMsg('Please accept the Terms & Conditions.'); return }
 
     setStatus('loading')
 
-    // ── Payload — typed as EnquiryPayload, terms_accepted is UI-only ──────
     const payload: EnquiryPayload = {
       name:    form.name.trim(),
       email:   form.email.trim(),
       phone:   form.phone.trim(),
-      subject: form.subject.trim(), // required by EnquiryPayload (not optional)
+      subject: form.subject.trim(),
       message: form.message.trim(),
     }
 
@@ -86,11 +105,9 @@ const ContactPage = () => {
         const raw     = err?.message ?? ''
         const jsonStr = raw.replace(/^API error \[\d+\] on [^:]+:\s*/, '')
         const parsed  = JSON.parse(jsonStr)
-        if (typeof parsed.detail === 'string') {
-          msg = parsed.detail
-        } else if (typeof parsed.message === 'string') {
-          msg = parsed.message
-        } else {
+        if (typeof parsed.detail === 'string')        msg = parsed.detail
+        else if (typeof parsed.message === 'string')  msg = parsed.message
+        else {
           const firstKey = Object.keys(parsed)[0]
           if (firstKey) {
             const val = parsed[firstKey]
@@ -107,6 +124,19 @@ const ContactPage = () => {
         .filter(Boolean).join(', ')
     : ''
 
+  // Build embed URL from address — uses free maps.google.com/maps?q= endpoint
+  // No API key needed; renders a real map with a red pin on the location
+  const mapEmbedUrl = contactInfo
+    ? buildEmbedUrlFree(
+        contactInfo.address  ?? '',
+        contactInfo.city     ?? '',
+        contactInfo.state    ?? '',
+        contactInfo.pincode  ?? '',
+      )
+    : null
+  // "Open in Maps" uses the CMS short link if present, else falls back to embed URL
+  const mapOpenUrl = contactInfo?.map_embed_url?.trim() || mapEmbedUrl || 'https://maps.google.com'
+
   return (
     <>
       <InnerPageHeader />
@@ -118,14 +148,9 @@ const ContactPage = () => {
 
       <style>{`
         .form-alert {
-          display: flex;
-          align-items: flex-start;
-          gap: 12px;
-          border-radius: 8px;
-          padding: 16px 20px;
-          margin-bottom: 28px;
-          font-size: 14px;
-          line-height: 1.5;
+          display: flex; align-items: flex-start; gap: 12px;
+          border-radius: 8px; padding: 16px 20px; margin-bottom: 28px;
+          font-size: 14px; line-height: 1.5;
         }
         .form-alert svg    { flex-shrink: 0; margin-top: 2px; }
         .form-alert p      { margin: 4px 0 0; opacity: .85; }
@@ -137,14 +162,71 @@ const ContactPage = () => {
 
         @keyframes kcSpin { to { transform: rotate(360deg); } }
         .btn-spinner {
-          display: inline-block;
-          width: 16px; height: 16px;
-          border: 2px solid rgba(255,255,255,.35);
-          border-top-color: #fff;
-          border-radius: 50%;
-          animation: kcSpin .7s linear infinite;
-          vertical-align: middle;
-          margin-right: 8px;
+          display: inline-block; width: 16px; height: 16px;
+          border: 2px solid rgba(255,255,255,.35); border-top-color: #fff;
+          border-radius: 50%; animation: kcSpin .7s linear infinite;
+          vertical-align: middle; margin-right: 8px;
+        }
+
+        /* ── Map fallback card ── */
+        .map-link-fallback {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 14px;
+          background: #f5f5f5;
+          border: 1px solid #e0e0e0;
+          padding: 40px 24px;
+          text-align: center;
+          flex-direction: column;
+        }
+        .map-link-fallback svg   { color: #e53935; }
+        .map-link-fallback h5    { margin: 0 0 4px; font-size: 1rem; font-weight: 700; color: #1a1a1a; }
+        .map-link-fallback p     { margin: 0 0 16px; color: #777; font-size: 0.88rem; }
+        .map-open-btn {
+          display: inline-flex; align-items: center; gap: 8px;
+          background: #1a1a1a; color: #fff;
+          padding: 12px 24px; font-size: 0.88rem; font-weight: 700;
+          text-decoration: none; letter-spacing: 0.04em;
+          transition: background 0.2s;
+        }
+        .map-open-btn:hover { background: #333; color: #fff; }
+
+        /* ── Map iframe wrapper ── */
+        .map-iframe-wrap {
+          position: relative;
+          width: 100%;
+          height: 500px;
+          overflow: hidden;
+        }
+        .map-iframe-wrap iframe {
+          width: 100%;
+          height: 100%;
+          border: 0;
+          display: block;
+        }
+        /* "Open in Google Maps" pill — bottom-right corner of the map */
+        .map-open-overlay {
+          position: absolute;
+          bottom: 16px;
+          right: 16px;
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          background: #fff;
+          color: #1a1a1a;
+          font-size: 0.8rem;
+          font-weight: 700;
+          padding: 9px 16px;
+          box-shadow: 0 2px 12px rgba(0,0,0,0.18);
+          text-decoration: none;
+          letter-spacing: 0.03em;
+          transition: background 0.2s, color 0.2s;
+          z-index: 10;
+        }
+        .map-open-overlay:hover {
+          background: #1a1a1a;
+          color: #fff;
         }
       `}</style>
 
@@ -214,7 +296,11 @@ const ContactPage = () => {
                         <div className="content">
                           <span>Our Location</span>
                           <h6>
-                            <a href={contactInfo?.map_embed_url ? '#map' : 'https://www.google.com/maps'} target="_blank" rel="noopener noreferrer">
+                            <a
+                              href={contactInfo?.map_embed_url ?? 'https://www.google.com/maps'}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
                               {fullAddress}
                             </a>
                           </h6>
@@ -232,7 +318,7 @@ const ContactPage = () => {
 
                   {status === 'success' && (
                     <div className="form-alert form-alert--success">
-                      <svg width={20} height={20} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <svg width={20} height={20} viewBox="0 0 24 24" fill="none">
                         <path d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
                       <div>
@@ -244,7 +330,7 @@ const ContactPage = () => {
 
                   {errorMsg && (
                     <div className="form-alert form-alert--error">
-                      <svg width={20} height={20} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <svg width={20} height={20} viewBox="0 0 24 24" fill="none">
                         <path d="M12 8V12M12 16H12.01M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
                       <div>
@@ -260,65 +346,35 @@ const ContactPage = () => {
                       <div className="col-md-12">
                         <div className="form-inner">
                           <label>Full Name <span style={{ color: '#e53935' }}>*</span></label>
-                          <input
-                            type="text"
-                            name="name"
-                            value={form.name}
-                            onChange={handleChange}
-                            placeholder="Enter your full name"
-                          />
+                          <input type="text" name="name" value={form.name} onChange={handleChange} placeholder="Enter your full name" />
                         </div>
                       </div>
 
                       <div className="col-md-6">
                         <div className="form-inner">
                           <label>Email Address <span style={{ color: '#e53935' }}>*</span></label>
-                          <input
-                            type="email"
-                            name="email"
-                            value={form.email}
-                            onChange={handleChange}
-                            placeholder="your@email.com"
-                          />
+                          <input type="email" name="email" value={form.email} onChange={handleChange} placeholder="your@email.com" />
                         </div>
                       </div>
 
                       <div className="col-md-6">
                         <div className="form-inner">
                           <label>Phone Number <span style={{ color: '#e53935' }}>*</span></label>
-                          <input
-                            type="tel"
-                            name="phone"
-                            value={form.phone}
-                            onChange={handleChange}
-                            placeholder="+91 00000 00000"
-                          />
+                          <input type="tel" name="phone" value={form.phone} onChange={handleChange} placeholder="+91 00000 00000" />
                         </div>
                       </div>
 
                       <div className="col-md-12">
                         <div className="form-inner">
                           <label>Subject</label>
-                          <input
-                            type="text"
-                            name="subject"
-                            value={form.subject}
-                            onChange={handleChange}
-                            placeholder="Brief subject (optional)"
-                          />
+                          <input type="text" name="subject" value={form.subject} onChange={handleChange} placeholder="Brief subject (optional)" />
                         </div>
                       </div>
 
                       <div className="col-md-12">
                         <div className="form-inner">
                           <label>Message <span style={{ color: '#e53935' }}>*</span></label>
-                          <textarea
-                            name="message"
-                            value={form.message}
-                            onChange={handleChange}
-                            placeholder="Tell us how we can help you..."
-                            rows={5}
-                          />
+                          <textarea name="message" value={form.message} onChange={handleChange} placeholder="Tell us how we can help you..." rows={5} />
                         </div>
                       </div>
 
@@ -349,10 +405,7 @@ const ContactPage = () => {
                       disabled={status === 'loading'}
                     >
                       {status === 'loading' ? (
-                        <>
-                          <span className="btn-spinner" />
-                          Submitting...
-                        </>
+                        <><span className="btn-spinner" />Submitting...</>
                       ) : (
                         <>
                           Submit Enquiry
@@ -376,19 +429,35 @@ const ContactPage = () => {
         </div>
       </div>
 
-      {/* ── Map ── */}
-      {contactInfo?.map_embed_url && (
+      {/* ── Map section ── */}
+      {mapEmbedUrl && (
         <div className="contact-map-section mb-120" id="map">
           <div className="container">
-            <iframe
-              src={contactInfo.map_embed_url}
-              width="600"
-              height="450"
-              style={{ border: 0 }}
-              allowFullScreen
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-            />
+
+            {/* Interactive embed — built from address, always works without API key */}
+            <div className="map-iframe-wrap">
+              <iframe
+                src={mapEmbedUrl}
+                allowFullScreen
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                title="Our Location"
+              />
+              {/* "Open in Maps" overlay button — uses the CMS link or fallback */}
+              <a
+                href={mapOpenUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="map-open-overlay"
+                aria-label="Open in Google Maps"
+              >
+                <svg width={16} height={16} viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M19 19H5V5h7V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/>
+                </svg>
+                Open in Google Maps
+              </a>
+            </div>
+
           </div>
         </div>
       )}

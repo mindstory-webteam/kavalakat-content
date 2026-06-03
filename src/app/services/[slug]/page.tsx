@@ -262,53 +262,43 @@ function getAboutGalleryImages(about: ServiceAbout | null): string[] {
 /* ─────────────────────────────────────────────────
    COUNT-UP HOOK
 ───────────────────────────────────────────────── */
-function useCountUp(target: number, duration = 2000, shouldStart = false) {
-  const [count, setCount] = useState(0)
-
-  useEffect(() => {
-    setCount(0)
-    if (!shouldStart) return
-
-    let cancelled = false
-    let startTime: number | null = null
-
-    const step = (timestamp: number) => {
-      if (cancelled) return
-      if (!startTime) startTime = timestamp
-      const progress = Math.min((timestamp - startTime) / duration, 1)
-      const eased = 1 - Math.pow(1 - progress, 3)
-      setCount(Math.floor(eased * target))
-      if (progress < 1) requestAnimationFrame(step)
-      else setCount(target)
-    }
-
-    requestAnimationFrame(step)
-    return () => { cancelled = true }
-  }, [target, duration, shouldStart])
-
-  return count
-}
-
 /* ─────────────────────────────────────────────────
-   STAT ITEM
+   STAT ITEM — self-contained count-up
+   Starts as soon as `number` becomes > 0, after `delay` ms.
+   No IntersectionObserver needed — the bar is always visible.
 ───────────────────────────────────────────────── */
-function StatItem({ number, suffix, label, delay, shouldStart }: {
+function StatItem({ number, suffix, label, delay }: {
   number: number
   suffix: string
   label: string
   delay: number
-  shouldStart: boolean
 }) {
-  const [active, setActive] = useState(false)
+  const [count, setCount] = useState(0)
 
   useEffect(() => {
-    setActive(false)
-    if (!shouldStart) return
-    const t = setTimeout(() => setActive(true), delay)
-    return () => clearTimeout(t)
-  }, [shouldStart, delay, number])
+    setCount(0)
+    if (number <= 0) return   // wait for real data
 
-  const count = useCountUp(number, 2000, active)
+    const timer = setTimeout(() => {
+      const duration = 1800
+      let startTime: number | null = null
+      let raf: number
+
+      const step = (timestamp: number) => {
+        if (!startTime) startTime = timestamp
+        const progress = Math.min((timestamp - startTime) / duration, 1)
+        const eased = 1 - Math.pow(1 - progress, 3)
+        setCount(Math.floor(eased * number))
+        if (progress < 1) raf = requestAnimationFrame(step)
+        else setCount(number)
+      }
+
+      raf = requestAnimationFrame(step)
+      return () => cancelAnimationFrame(raf)
+    }, delay)
+
+    return () => clearTimeout(timer)
+  }, [number, delay])   // re-runs when API data arrives
 
   return (
     <div className="alite-stat-item">
@@ -339,7 +329,7 @@ const AliteEnclavesPage = () => {
   const [duration, setDuration] = useState(0)
   const [progress, setProgress] = useState(0)
   const [isMuted, setIsMuted] = useState(true)
-  const [statsVisible, setStatsVisible] = useState(false)
+  // statsVisible removed — StatItem now self-triggers on data arrival
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const autoSlideRef = useRef<NodeJS.Timeout | null>(null)
@@ -471,19 +461,27 @@ const AliteEnclavesPage = () => {
         { place: 'Shopping Malls & Markets', dist: '1.8 km' },
       ]
 
-  /* ─── Stats: parse "200+" → { number: 200, suffix: "+" } ─── */
+  /* ─── Stats: parse counter_number into { number, suffix }
+     Handles: "4+" → 4/"+", "100%" → 100/"%", "24/7" → 24/"/7", "5★" → 5/"★"
+  ─── */
+  function parseCounter(raw: string): { number: number; suffix: string } {
+    const s = (raw ?? '').trim()
+    // Match leading integer, everything after is suffix
+    const m = s.match(/^(\d+)(.*)$/)
+    if (!m) return { number: 0, suffix: s }
+    return { number: parseInt(m[1], 10), suffix: m[2] }
+  }
+
   const statItems = counters.length > 0
     ? counters.map((c, i) => {
-        const raw = (c.counter_number ?? '').trim()
-        const num = parseInt(raw.replace(/[^0-9]/g, ''), 10) || 0
-        const suffix = raw.replace(/^\d+/, '')
-        return { number: num, suffix, label: (c.counter_title ?? '').toUpperCase(), delay: i * 200 }
+        const { number, suffix } = parseCounter(c.counter_number)
+        return { number, suffix, label: (c.counter_title ?? '').toUpperCase(), delay: i * 150 }
       })
     : [
         { number: 4,   suffix: '+',  label: 'ROOM CATEGORIES',   delay: 0   },
-        { number: 100, suffix: '%',  label: 'GUEST SATISFACTION', delay: 200 },
-        { number: 24,  suffix: '/7', label: 'FRONT DESK SUPPORT', delay: 400 },
-        { number: 5,   suffix: '★',  label: 'GUEST EXPERIENCE',   delay: 600 },
+        { number: 100, suffix: '%',  label: 'GUEST SATISFACTION', delay: 150 },
+        { number: 24,  suffix: '/7', label: 'FRONT DESK SUPPORT', delay: 300 },
+        { number: 5,   suffix: '★',  label: 'GUEST EXPERIENCE',   delay: 450 },
       ]
 
   /* ─── Page meta ─── */
@@ -529,21 +527,7 @@ const AliteEnclavesPage = () => {
   /* ─────────────────────────────────────────────────
      INTERSECTION OBSERVER — stats counter
   ───────────────────────────────────────────────── */
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => { if (entries[0].isIntersecting) { setStatsVisible(true); observer.disconnect() } },
-      { threshold: 0.1 }
-    )
-    if (statsRef.current) observer.observe(statsRef.current)
-    return () => observer.disconnect()
-  }, [])
-
-  // Fallback: check if already in view when API data loads
-  useEffect(() => {
-    if (!serviceData || statsVisible || !statsRef.current) return
-    const { top, bottom } = statsRef.current.getBoundingClientRect()
-    if (top < window.innerHeight && bottom > 0) setStatsVisible(true)
-  }, [serviceData, statsVisible])
+  // No IntersectionObserver needed — StatItem starts count-up when number > 0
 
   /* ─────────────────────────────────────────────────
      VIDEO CONTROLS
@@ -701,7 +685,7 @@ const AliteEnclavesPage = () => {
         <div className="container-fluid px-0">
           <div className="alite-stats-wrap">
             {statItems.map((s, i) => (
-              <StatItem key={i} number={s.number} suffix={s.suffix} label={s.label} delay={s.delay} shouldStart={statsVisible} />
+              <StatItem key={i} number={s.number} suffix={s.suffix} label={s.label} delay={s.delay} />
             ))}
           </div>
         </div>

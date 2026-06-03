@@ -29,7 +29,7 @@ async function fetchMilestones(): Promise<Milestone[]> {
     let nextUrl: string | null = `${API_BASE}/milestones/`;
 
     while (nextUrl) {
-      const res = await fetch(nextUrl, {
+      const res: Response = await fetch(nextUrl, {
         headers: { "Content-Type": "application/json" },
         cache: "no-store",
       });
