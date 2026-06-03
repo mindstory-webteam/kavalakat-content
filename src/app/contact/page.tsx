@@ -429,6 +429,31 @@ const ContactPage = () => {
         </div>
       </div>
 
+        <div className="contact-page-address-section mb-120">
+                <div className="container">
+                   
+                    <ul className="address-list">
+                        <li className="single-address">
+                            <span>THRISSUR</span>
+                            <a href="https://maps.app.goo.gl/1cosSuNMFq8UM1Vw9">H.O. IX/413/4, T.B. Road, S. T. Nagar, Thrissur, Kerala - 680 001</a>
+                        </li>
+                        <li className="single-address">
+                            <span>PALAKKAD</span>
+                            <a href="https://maps.app.goo.gl/Vyd1NL61Q1cgMTvY7">N. H. by-pass Road, Manapullikavu, Palakkad, Kerala - 678 013</a>
+                        </li>
+                        <li className="single-address">
+                            <span>  ERNAKULAM</span>
+                            <a href="https://www.google.com/maps"> First Floor(Near KSRTC), Angamaly-683572, Ernakulam</a>
+                        </li>
+                        <li className="single-address">
+                            <span>THRISSUR</span>
+                            <a href="https://maps.app.goo.gl/1cosSuNMFq8UM1Vw9">H.O. IX/376-2, T.B.Road, S. T. Nagar, Thrissur, Kerala - 680 001</a>
+                        </li>
+                    </ul>
+                    
+                </div>
+            </div>
+
       {/* ── Map section ── */}
       {mapEmbedUrl && (
         <div className="contact-map-section mb-120" id="map">

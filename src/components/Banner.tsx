@@ -28,7 +28,7 @@ const Banner = () => {
             button1Link: "/product",
             button2Text: "Get Quote",
             button2Link: "/contact",
-            image: "/assets/new-images/banner/banner-2.jpeg"
+            image: "/assets/new-images/banner/banner-5.png"
         },
         {
             id: 3,
