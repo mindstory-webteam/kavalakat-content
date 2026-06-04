@@ -47,7 +47,7 @@ interface PortfolioItem {
 
 const BASE        = 'https://api.kavalakat.com/api/portfolio'
 const API         = 'https://api.kavalakat.com/api'
-const PLACEHOLDER = '/assets/new-images/bm/bm-3.jpeg'
+const PLACEHOLDER = '/assets/new-images/new-images/portfolio/portfolio-breadcrum.jpg'
 
 // Portfolio category slugs that are "services" — items in these categories
 // come from /api/portfolio/items/ and link to /portfolio/[cat]/[name]
