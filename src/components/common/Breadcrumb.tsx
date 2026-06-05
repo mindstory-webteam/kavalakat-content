@@ -6,19 +6,19 @@ import Image from 'next/image'
 type BreadcrumbProps = {
     title: string;
     subtitle: string;
-    image?: string;  // ✅ Made optional
+    image?: string;  // ✅ optional
     imageAlt?: string;
     showCircularText?: boolean;
     showVector?: boolean;
 };
 
-const Breadcrumb = ({ 
-    title, 
-    subtitle, 
+const Breadcrumb = ({
+    title,
+    subtitle,
     image,
     imageAlt = "breadcrumb image",
     showCircularText = false,
-    showVector = false 
+    showVector = false
 }: BreadcrumbProps) => {
     return (
         <div className="breadcrumb-section">
@@ -56,30 +56,57 @@ const Breadcrumb = ({
                     />
                 )}
             </div>
-           {image && (
-  <div
-    className="breadcrumb-img"
-    style={{
-      position: "relative",
-      width: "100%",
-      height: "550px",
-      overflow: "hidden"
-    }}
-  >
-    <Image
-      src={image}
-      alt={imageAlt}
-      fill
-      priority
-      style={{
-        objectFit: "cover",
-        objectPosition: "center"
-      }}
-    />
-  </div>
-)}
 
-        
+            {image && (
+                <div className="breadcrumb-img">
+                    <Image
+                        src={image}
+                        alt={imageAlt}
+                        fill
+                        priority
+                        sizes="100vw"
+                        style={{
+                            objectFit: "cover",
+                            objectPosition: "center"
+                        }}
+                    />
+                </div>
+            )}
+
+            {/* Plain <style> (not styled-jsx) so this stays a Server Component.
+                Renders global CSS with breakpoints, so the banner image and
+                heading scale down on tablet and mobile. */}
+            <style>{`
+                .breadcrumb-img {
+                    position: relative;
+                    width: 100%;
+                    height: 550px;
+                    overflow: hidden;
+                }
+
+                /* Laptop */
+                @media (max-width: 1199px) {
+                    .breadcrumb-img { height: 460px; }
+                }
+
+                /* Tablet */
+                @media (max-width: 991px) {
+                    .breadcrumb-img { height: 380px; }
+                    .breadcrumb-content h1 { font-size: 2.4rem; line-height: 1.2; }
+                }
+
+                /* Mobile */
+                @media (max-width: 768px) {
+                    .breadcrumb-img { height: 300px; }
+                    .breadcrumb-content h1 { font-size: 1.9rem; }
+                }
+
+                /* Small mobile */
+                @media (max-width: 480px) {
+                    .breadcrumb-img { height: 220px; }
+                    .breadcrumb-content h1 { font-size: 1.5rem; }
+                }
+            `}</style>
         </div>
     )
 }

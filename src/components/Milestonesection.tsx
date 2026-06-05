@@ -525,46 +525,99 @@ const MilestoneSection: React.FC = () => {
           font-size: 15px;
         }
 
-        /* Responsive */
-        @media (max-width: 900px) {
-          .mil-row {
-            grid-template-columns: 1fr;
-            margin-bottom: 60px;
-          }
-          .mil-line, .mil-dash { display: none; }
+        /* ── Responsive ─────────────────────────────────────────────── */
 
-          .mil-row .mil-node-col,
-          .mil-row:nth-child(even) .mil-node-col {
-            grid-column: 1 !important; grid-row: 1;
-            flex-direction: row;
-            justify-content: flex-start;
-            gap: 14px;
-            margin-bottom: 14px;
-          }
-          .mil-year { opacity: 1 !important; transform: none !important; margin-top: 0; }
-          .mil-row .mil-card-col,
-          .mil-row:nth-child(even) .mil-card-col { grid-column: 1 !important; grid-row: 2; }
-          .mil-row .mil-body-col,
-          .mil-row:nth-child(even) .mil-body-col {
-            grid-column: 1 !important; grid-row: 3;
-            text-align: left !important; padding: 0;
-          }
-          .mil-row:nth-child(odd) .mil-card  { margin-right: 0; }
-          .mil-row:nth-child(even) .mil-card { margin-left: 0; }
-          .mil-row:nth-child(even) .mil-chips { justify-content: flex-start; }
-
-          .mil-row:nth-child(odd) .mil-card-col,
-          .mil-row:nth-child(even) .mil-card-col { transform: translateY(36px) !important; }
-          .mil-row:nth-child(odd) .mil-body-col,
-          .mil-row:nth-child(even) .mil-body-col { transform: translateY(24px) !important; }
-          .mil-row.mil-in .mil-card-col,
-          .mil-row.mil-in .mil-body-col { transform: translateY(0) !important; }
+        /* Large tablets / small laptops — keep two columns, ease spacing */
+        @media (max-width: 1100px) {
+          .mil-wrap { padding: 0 24px; }
+          .mil-row { margin-bottom: 72px; }
+          .mil-row:nth-child(odd)  .mil-card { margin-right: 20px; }
+          .mil-row:nth-child(even) .mil-card { margin-left:  20px; }
+          .mil-body-col { padding: 0 10px; }
         }
 
+        /* Tablet & mobile — STACKED CARDS (image -> marker -> text), downward.
+           Uses flex column so the grid-row / grid-column rules above are
+           ignored entirely and can no longer cause the overlap bug. */
+        @media (max-width: 900px) {
+          .mil-row {
+            display: flex !important;
+            flex-direction: column;
+            align-items: stretch;
+            margin-bottom: 48px;
+          }
+          .mil-line,
+          .mil-dash { display: none !important; }
+
+          /* Stack order: image first, then year marker, then text */
+          .mil-card-col { order: 1; width: 100%; margin-bottom: 16px; }
+          .mil-node-col { order: 2; width: 100%; margin-bottom: 14px; }
+          .mil-body-col { order: 3; width: 100%; }
+
+          /* Image fills width, no side offset */
+          .mil-row:nth-child(odd)  .mil-card,
+          .mil-row:nth-child(even) .mil-card { margin: 0 !important; }
+
+          /* Hide the duplicate year stamp on the image (year shows in marker) */
+          .mil-stamp { display: none !important; }
+
+          /* Year marker becomes a small horizontal strip under the image */
+          .mil-node-col,
+          .mil-row:nth-child(even) .mil-node-col {
+            flex-direction: row;
+            justify-content: flex-start;
+            align-items: center;
+            gap: 12px;
+          }
+          .mil-node { width: 46px; height: 46px; }
+          .mil-year { margin-top: 0; }
+
+          /* Text always left-aligned */
+          .mil-body-col,
+          .mil-row:nth-child(even) .mil-body-col {
+            text-align: left !important;
+            padding: 0;
+          }
+          .mil-chips,
+          .mil-row:nth-child(even) .mil-chips { justify-content: flex-start; }
+
+          /* Force everything visible — never depends on the scroll observer,
+             so content can't get stuck hidden or shifted off-position */
+          .mil-card-col,
+          .mil-body-col,
+          .mil-node-col,
+          .mil-row:nth-child(odd)  .mil-card-col,
+          .mil-row:nth-child(odd)  .mil-body-col,
+          .mil-row:nth-child(even) .mil-card-col,
+          .mil-row:nth-child(even) .mil-body-col {
+            opacity: 1 !important;
+            transform: none !important;
+          }
+          .mil-node-num { opacity: 1 !important; }
+          .mil-year { opacity: 1 !important; }
+        }
+
+        /* Small mobile */
         @media (max-width: 580px) {
           .mil-section { padding: 70px 0 80px; }
           .mil-hdr { margin-bottom: 52px; }
+          .mil-hdr p { font-size: 14px; }
           .mil-wrap { padding: 0 16px; }
+          .mil-row { margin-bottom: 40px; }
+          .mil-body-col h3 { margin-bottom: 10px; }
+          .mil-body-col p { font-size: 14px; }
+        }
+
+        /* Extra-small phones */
+        @media (max-width: 400px) {
+          .mil-section { padding: 56px 0 64px; }
+          .mil-hdr { margin-bottom: 44px; }
+          .mil-node { width: 42px; height: 42px; }
+          .mil-node-col { gap: 10px; }
+          .mil-year { font-size: 10px; padding: 3px 10px; }
+          .mil-body-col h3 { font-size: 18px; }
+          .mil-body-col p { font-size: 13.5px; }
+          .mil-chip { font-size: 9px; padding: 3px 9px; letter-spacing: 0.06em; }
         }
       `}</style>
 

@@ -7,7 +7,7 @@ import Image from 'next/image';
 
 const Banner = () => {
     useCircularTextByClass("circular-text");
-    
+
     const [currentSlide, setCurrentSlide] = useState(0);
     const [isAnimating, setIsAnimating] = useState(false);
 
@@ -64,7 +64,6 @@ const Banner = () => {
     return (
         <>
             <div className="home1-banner-section mb-60">
-                {/* ← changed: replaced container-fluid with a plain full-width div */}
                 <div style={{ width: '100%', padding: 0 }}>
                     <div className="banner-wrapper">
                         {/* Background Images */}
@@ -92,16 +91,16 @@ const Banner = () => {
                         <div className="banner-content-wrap">
                             <div className="banner-carousel-container">
                                 {slides.map((slide, index) => (
-                                    <div 
+                                    <div
                                         key={slide.id}
                                         className={`banner-content wow animate ${
-                                            index === currentSlide 
-                                                ? 'active fadeInLeft' 
-                                                : index < currentSlide 
-                                                ? 'prev fadeOutLeft' 
+                                            index === currentSlide
+                                                ? 'active fadeInLeft'
+                                                : index < currentSlide
+                                                ? 'prev fadeOutLeft'
                                                 : 'next fadeOutRight'
                                         }`}
-                                        data-wow-delay="200ms" 
+                                        data-wow-delay="200ms"
                                         data-wow-duration="1500ms"
                                     >
                                         <h1>{slide.title}</h1>
@@ -152,6 +151,11 @@ const Banner = () => {
                 .banner-wrapper {
                     position: relative;
                     overflow: hidden;
+                    /* Controlled, responsive height. The background image (fill)
+                       follows this, so changing these values resizes the banner. */
+                    min-height: 680px;
+                    display: flex;
+                    align-items: center;
                 }
 
                 .banner-images-container {
@@ -193,11 +197,14 @@ const Banner = () => {
                 .banner-content-wrap {
                     position: relative;
                     z-index: 2;
+                    width: 100%;
+                    /* breathing room from the edges, scales with viewport */
+                    padding: 0 clamp(20px, 5vw, 100px);
                 }
 
                 .banner-carousel-container {
                     position: relative;
-                    min-height: 400px;
+                    min-height: 260px;
                 }
 
                 .banner-content {
@@ -227,6 +234,21 @@ const Banner = () => {
                 .banner-content.next {
                     transform: translateX(100px);
                     animation: fadeOutRight 0.6s ease-in-out;
+                }
+
+                /* Responsive typography — overrides theme defaults so the
+                   heading never overflows on small screens. */
+                .banner-content :global(h1) {
+                    font-size: clamp(1.6rem, 4vw, 3.6rem);
+                    line-height: 1.15;
+                    margin-bottom: clamp(20px, 3vw, 40px);
+                    max-width: 760px;
+                }
+
+                .banner-content :global(.btn-grp) {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 12px;
                 }
 
                 @keyframes fadeInLeft {
@@ -317,24 +339,58 @@ const Banner = () => {
                     }
                 }
 
+                /* ===== Responsive breakpoints ===== */
+
+                /* Large desktop / laptop */
+                @media (max-width: 1199px) {
+                    .banner-wrapper {
+                        min-height: 580px;
+                    }
+                }
+
+                /* Tablet */
+                @media (max-width: 991px) {
+                    .banner-wrapper {
+                        min-height: 500px;
+                    }
+                    .carousel-nav-lines {
+                        bottom: 30px;
+                    }
+                }
+
+                /* Mobile — noticeably shorter banner */
                 @media (max-width: 768px) {
+                    .banner-wrapper {
+                        min-height: 420px;
+                    }
+                    .banner-carousel-container {
+                        min-height: 200px;
+                    }
                     .carousel-nav-lines {
                         bottom: 20px;
                         gap: 8px;
                     }
-
                     .nav-line {
                         width: 40px;
                         height: 2px;
                     }
                 }
 
+                /* Small mobile */
                 @media (max-width: 480px) {
+                    .banner-wrapper {
+                        min-height: 380px;
+                    }
+                    .banner-content-wrap {
+                        padding: 0 18px;
+                    }
+                    .banner-content :global(.btn-grp) {
+                        gap: 10px;
+                    }
                     .carousel-nav-lines {
                         bottom: 15px;
                         gap: 6px;
                     }
-
                     .nav-line {
                         width: 30px;
                     }

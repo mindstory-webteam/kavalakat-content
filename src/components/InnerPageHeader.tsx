@@ -162,6 +162,7 @@ const InnerPageHeader: React.FC = () => {
           .main-menu.show-menu .menu-list>li>a svg path{fill:#ffffff!important}
           .main-menu .sub-menu{display:none}
           .main-menu .sub-menu.d-block{display:block!important}
+          header.style-1.inner-page .main-menu>ul>li .bi{color:black !important}
         }
       `}</style>
 
