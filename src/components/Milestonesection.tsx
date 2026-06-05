@@ -544,7 +544,7 @@ const MilestoneSection: React.FC = () => {
             display: flex !important;
             flex-direction: column;
             align-items: stretch;
-            margin-bottom: 48px;
+            margin-bottom: 72px;
           }
           .mil-line,
           .mil-dash { display: none !important; }
@@ -603,7 +603,7 @@ const MilestoneSection: React.FC = () => {
           .mil-hdr { margin-bottom: 52px; }
           .mil-hdr p { font-size: 14px; }
           .mil-wrap { padding: 0 16px; }
-          .mil-row { margin-bottom: 40px; }
+          .mil-row { margin-bottom: 60px; }
           .mil-body-col h3 { margin-bottom: 10px; }
           .mil-body-col p { font-size: 14px; }
         }
