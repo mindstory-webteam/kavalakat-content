@@ -105,15 +105,14 @@ directly to major infrastructure projects across Kerala.
                     </div>
                 </div>
                 <React.Fragment>
-                    <ModalVideo
-                        channel="youtube"
-                        // onClick={() => setOpen(true)}
-                        isOpen={isOpen}
-                        animationSpeed={350}
-                        videoId="r4KpWiK08vM"
-                        ratio="16:9"
-                        onClose={() => setOpen(false)}
-                    />
+                   <ModalVideo
+    channel="custom"
+    isOpen={isOpen}
+    animationSpeed={350}
+    url="/assets/video/main-1.mp4"
+    ratio="16:9"
+    onClose={() => setOpen(false)}
+/>
                 </React.Fragment>
             </div>
 
