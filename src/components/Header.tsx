@@ -220,7 +220,7 @@ const Header: React.FC = () => {
             <Link href="/contact" className="all-location-btn">View All Factory Location</Link>
           </div>
           <div className="sidebar-bottom-area">
-            <p>Copyright 2025 <Link href="/">Kavalakat</Link> | Powered By <a href="https://mindstory.in/">MindStory</a></p>
+            <p>Copyright 2026 <Link href="/">Kavalakat</Link> | Powered By <a href="https://mindstory.in/">MindStory</a></p>
           </div>
         </div>
       </div>
