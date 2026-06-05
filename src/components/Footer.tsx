@@ -236,7 +236,7 @@ const Footer = () => {
         .footer-nav-arrow{display:inline-flex;align-items:center;flex-shrink:0;opacity:0;transform:translateX(-4px);transition:opacity .22s ease,transform .22s ease}
         .footer-nav-link:hover .footer-nav-arrow{opacity:1;transform:translateX(0)}
         .footer-nav-arrow svg path{fill:currentColor}
-        .footer-nav-text{font-size:.875rem;font-weight:500;line-height:1.4;transition:transform .22s ease}
+        .footer-nav-text{font-size:.875rem;font-weight:500;line-height:1.4;transition:transform .22s ease;text-transform: uppercase;}
         .footer-nav-link:hover .footer-nav-text{transform:translateX(2px)}
       `}</style>
     </footer>
