@@ -11,10 +11,12 @@ import HomeTestimonialSection from '@/components/HomeTestimonialSection';
 import HomeContactSection from '@/components/HomeContactSection';
 import Footer from '@/components/Footer';
 import ChatbotWidget from '@/components/ChatbotWidget';
+import KavakalatPreloader from '@/components/common/KavakalatPreloader';
 
 export default function Home() {
   return (
     <>
+    {/* <KavakalatPreloader/> */}
     <Header />
      
     <Banner />

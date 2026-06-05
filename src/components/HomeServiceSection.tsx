@@ -2,8 +2,15 @@
 
 import Link from "next/link";
 import React, { useEffect, useRef, useState } from "react";
+import { Swiper, SwiperSlide } from "swiper/react";
+import SwiperCore, { Autoplay, Pagination } from "swiper";
+import { SwiperOptions } from "swiper/types";
+import "swiper/css";
+import "swiper/css/pagination";
 import { buildPortfolioHref, normalisePortfolioItem } from "@/lib/api";
 import type { PortfolioItem } from "@/lib/api";
+
+SwiperCore.use([Autoplay, Pagination]);
 
 const API = process.env.NEXT_PUBLIC_API_URL || "https://api.kavalakat.com/api";
 const API_ORIGIN = API.replace(/\/api\/?$/, ""); // https://api.kavalakat.com
@@ -68,6 +75,16 @@ function resolveImage(raw: any): string {
 
   return FALLBACK_IMG;
 }
+
+// Shared arrow SVG used by the "View Details" buttons
+const DetailsArrow = () => (
+  <svg width={24} height={23} viewBox="0 0 24 23" xmlns="http://www.w3.org/2000/svg">
+    <g>
+      <path d="M12.056 0.0560084L23.3137 11.3137L21.2063 13.4211L2.81473 13.4419L2.79385 9.20615L15.2782 9.26771L9.00578 3.10624L12.056 0.0560084Z" />
+      <path d="M11.9999 22.6272L19.0987 15.5285L13.0794 15.4988L8.9755 19.6027L11.9999 22.6272Z" />
+    </g>
+  </svg>
+);
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -218,6 +235,27 @@ const HomeServiceSection: React.FC = () => {
     load();
   }, []);
 
+  // ── Mobile / tablet carousel settings ─────────────────────────────────────────
+  const mobileCarouselSettings: SwiperOptions = {
+    slidesPerView: 1,
+    spaceBetween: 16,
+    loop: items.length > 1,
+    speed: 800,
+    autoplay: { delay: 2500, disableOnInteraction: false },
+    pagination: { clickable: true },
+    breakpoints: {
+      768: { slidesPerView: 2 }, // tablet shows two cards
+    },
+  };
+
+  // White dots so they stay visible on the dark section background
+  const paginationStyle = {
+    "--swiper-pagination-color": "#ffffff",
+    "--swiper-pagination-bullet-inactive-color": "rgba(255,255,255,0.45)",
+    "--swiper-pagination-bullet-inactive-opacity": "1",
+    paddingBottom: 44,
+  } as React.CSSProperties;
+
   // ── Skeleton ────────────────────────────────────────────────────────────────
   if (loading && items.length === 0) {
     return (
@@ -282,75 +320,156 @@ const HomeServiceSection: React.FC = () => {
           </div>
         </div>
 
-        <ul className="sevices-wrap" ref={wrapRef}>
-          {items.map((item, index) => (
-            <li
-              key={item.uid}
-              className="single-services wow animate fadeInDown"
-              data-wow-delay={`${200 + index * 200}ms`}
-              data-wow-duration="1500ms"
-            >
-              <div className="number-and-icon-area">
-                <span>{String(index + 1).padStart(2, "0")}</span>
-                <div className="icon">
-                  <svg
-                    fill="#ffffff"
-                    width="52px"
-                    height="52px"
-                    viewBox="0 0 24 24"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <rect x="3" y="3" width="7" height="7" rx="1" />
-                    <rect x="14" y="3" width="7" height="7" rx="1" />
-                    <rect x="3" y="14" width="7" height="7" rx="1" />
-                    <rect x="14" y="14" width="7" height="7" rx="1" />
-                  </svg>
+        {/* ── Desktop (lg and up): original cursor-follow list ─────────────── */}
+        <div className="d-none d-lg-block">
+          <ul className="sevices-wrap" ref={wrapRef}>
+            {items.map((item, index) => (
+              <li
+                key={item.uid}
+                className="single-services wow animate fadeInDown"
+                data-wow-delay={`${200 + index * 200}ms`}
+                data-wow-duration="1500ms"
+              >
+                <div className="number-and-icon-area">
+                  <span>{String(index + 1).padStart(2, "0")}</span>
+                  <div className="icon">
+                    <svg
+                      fill="#ffffff"
+                      width="52px"
+                      height="52px"
+                      viewBox="0 0 24 24"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <rect x="3" y="3" width="7" height="7" rx="1" />
+                      <rect x="14" y="3" width="7" height="7" rx="1" />
+                      <rect x="3" y="14" width="7" height="7" rx="1" />
+                      <rect x="14" y="14" width="7" height="7" rx="1" />
+                    </svg>
+                  </div>
                 </div>
-              </div>
 
-              <div
-  className="services-img"
-  style={{ width: 250, height: 250, overflow: 'hidden', flexShrink: 0 }}
->
-  <img
-    src={item.imageUrl}
-    alt={item.name}
-    style={{
-      width: '100%',
-      height: '100%',
-      objectFit: 'cover',
-      objectPosition: 'center',
-      display: 'block',
-    }}
-    onError={(e) => {
-      (e.currentTarget as HTMLImageElement).src = FALLBACK_IMG;
-    }}
-  />
-</div>
-
-              <div className="content">
-                <p>{item.name}</p>
-              </div>
-
-              <Link href={item.href} className="details-btn">
-                <span>View Details</span>
-                <div className="icon">
-                  <svg
-                    width={24}
-                    height={23}
-                    viewBox="0 0 24 23"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <g>
-                      <path d="M12.056 0.0560084L23.3137 11.3137L21.2063 13.4211L2.81473 13.4419L2.79385 9.20615L15.2782 9.26771L9.00578 3.10624L12.056 0.0560084Z" />
-                      <path d="M11.9999 22.6272L19.0987 15.5285L13.0794 15.4988L8.9755 19.6027L11.9999 22.6272Z" />
-                    </g>
-                  </svg>
+                <div
+                  className="services-img"
+                  style={{ width: 250, height: 250, overflow: "hidden", flexShrink: 0 }}
+                >
+                  <img
+                    src={item.imageUrl}
+                    alt={item.name}
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                      objectPosition: "center",
+                      display: "block",
+                    }}
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).src = FALLBACK_IMG;
+                    }}
+                  />
                 </div>
-              </Link>
-            </li>
-          ))}
-        </ul>
+
+                <div className="content">
+                  <p>{item.name}</p>
+                </div>
+
+                <Link href={item.href} className="details-btn">
+                  <span>View Details</span>
+                  <div className="icon">
+                    <DetailsArrow />
+                  </div>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* ── Mobile / tablet (below lg): autoplay carousel with dots ──────── */}
+        <div className="d-lg-none">
+          <Swiper
+            {...mobileCarouselSettings}
+            className="home3-service-mobile-slider"
+            style={paginationStyle}
+          >
+            {items.map((item) => (
+              <SwiperSlide key={`m-${item.uid}`} style={{ height: "auto" }}>
+                <div
+                  style={{
+                    background: "rgba(255,255,255,0.05)",
+                    borderRadius: 12,
+                    overflow: "hidden",
+                    height: "100%",
+                    display: "flex",
+                    flexDirection: "column",
+                  }}
+                >
+                  <div style={{ width: "100%", height: 220, overflow: "hidden" }}>
+                    <img
+                      src={item.imageUrl}
+                      alt={item.name}
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                        objectPosition: "center",
+                        display: "block",
+                      }}
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = FALLBACK_IMG;
+                      }}
+                    />
+                  </div>
+
+                  <div
+                    style={{
+                      padding: 18,
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 14,
+                      flexGrow: 1,
+                    }}
+                  >
+                    <p
+                      style={{
+                        margin: 0,
+                        color: "#ffffff",
+                        fontSize: 18,
+                        fontWeight: 600,
+                        lineHeight: 1.3,
+                      }}
+                    >
+                      {item.name}
+                    </p>
+
+                    <Link
+                      href={item.href}
+                      style={{
+                        marginTop: "auto",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 8,
+                        color: "#ffffff",
+                        textDecoration: "none",
+                        fontWeight: 500,
+                      }}
+                    >
+                      <span>View Details</span>
+                      <span
+                        style={{
+                          display: "inline-flex",
+                          width: 18,
+                          height: 18,
+                          fill: "#ffffff",
+                        }}
+                      >
+                        <DetailsArrow />
+                      </span>
+                    </Link>
+                  </div>
+                </div>
+              </SwiperSlide>
+            ))}
+          </Swiper>
+        </div>
       </div>
     </div>
   );

@@ -56,7 +56,7 @@ const ArrowSvg = () => (
 const SkeletonSlide = () => (
   <div className="blog-card" style={{ opacity: 0.45 }}>
     <div className="blog-img-wrap">
-      <div style={{ width: "100%", height: 220, background: "#e0e0e0", borderRadius: 6 }} />
+      <div style={{ width: "100%", height: 240, background: "#e0e0e0", borderRadius: 6 }} />
     </div>
     <div className="blog-content" style={{ paddingTop: 16 }}>
       <div style={{ height: 12, background: "#e0e0e0", borderRadius: 4, marginBottom: 10, width: "40%" }} />
@@ -165,7 +165,7 @@ const HomepageBlogSection: React.FC = () => {
                             height={320}
                             src={resolveImage(post.image_url)}
                             alt={post.title}
-                            style={{ width: "100%", height: "auto", objectFit: "cover" }}
+                            style={{ width: "100%", height: "240px", objectFit: "cover" }}
                             onError={(e) => {
                               (e.currentTarget as HTMLImageElement).src =
                                 "/assets/new-images/blog/b-1.jpg"

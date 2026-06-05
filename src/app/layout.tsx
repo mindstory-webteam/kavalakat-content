@@ -9,6 +9,7 @@ import "../../public/assets/css/style.css";
 import { dmsans, manrope } from "../fonts/font";
 import ClientRoot from "@/components/ClientRoot";
 import ChunkErrorBoundary from "@/components/ChunkErrorBoundary";
+import KavakalatPreloader from "@/components/common/KavakalatPreloader";
 
 export const metadata: Metadata = {
   title: "Kavalakat - Factory & Industry Website.",
@@ -28,6 +29,7 @@ export default function RootLayout({
       <body>
         <ChunkErrorBoundary>
           <ClientRoot>
+            <KavakalatPreloader/>
             {children}
           </ClientRoot>
         </ChunkErrorBoundary>
