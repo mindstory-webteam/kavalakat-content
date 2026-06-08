@@ -260,7 +260,7 @@ const ProductPage = () => {
       <InnerPageHeader />
 
       <Breadcrumb
-        title="Our Products"
+        title="Our Portfolio"
         subtitle="Products Power Progress — Explore Our Offer"
         image={PLACEHOLDER}
       />
