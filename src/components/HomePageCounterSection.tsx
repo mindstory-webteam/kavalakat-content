@@ -18,7 +18,7 @@ const HomePageCounterSection: React.FC = () => {
                                     <div className="number">
                                         <Counter
                                             start={0}
-                                            end={45}
+                                            end={770}
                                             speed={10}
                                             ref={ref4}
                                             as="h2"
@@ -26,7 +26,7 @@ const HomePageCounterSection: React.FC = () => {
                                         />
                                         <span>+</span>
                                     </div>
-                                    <span>Green Spaces</span>
+                                    <span>Retail Partners</span>
                                 </div>
                             </div>
                             <div className="col-lg-3 col-md-4 col-sm-6 d-flex justify-content-lg-center divider">
@@ -34,14 +34,15 @@ const HomePageCounterSection: React.FC = () => {
                                     <div className="number">
                                         <Counter
                                             start={0}
-                                            end={146}
+                                            end={250}
                                             speed={15}
                                             ref={ref}
                                             as="h2"
                                             className="counter"
                                         />
                                     </div>
-                                    <span>Skilled Professionals</span>
+                                    <span>+</span>
+                                    <span>Skilled Employees</span>
                                 </div>
                             </div>
                             <div className="col-lg-3 col-md-4 col-sm-6 d-flex justify-content-lg-center justify-content-md-end divider">
@@ -49,12 +50,13 @@ const HomePageCounterSection: React.FC = () => {
                                     <div className="number">
                                         <Counter
                                             start={0}
-                                            end={10}
+                                            end={50}
                                             speed={10}
                                             ref={ref3}
                                             as="h2"
                                             className="counter"
                                         />
+                                        <span>+</span>
                                     </div>
                                     <span>Years of Experience</span>
                                 </div>
@@ -64,15 +66,15 @@ const HomePageCounterSection: React.FC = () => {
                                     <div className="number">
                                         <Counter
                                             start={0}
-                                            end={2}
+                                            end={10000}
                                             speed={10}
                                             ref={ref2}
                                             as="h2"
                                             className="counter"
                                         />
-                                        <span>M</span>
+                                        <span>+</span>
                                     </div>
-                                    <span>Square Meters</span>
+                                    <span>MT Steel / Month</span>
                                 </div>
                             </div>
                         </div>

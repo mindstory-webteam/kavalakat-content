@@ -39,7 +39,7 @@ const HomePageAboutSection: React.FC<HomePageAboutSectionProps>= ({ pt = "" }) =
                                         </a>
                                         <div className="content" style={{textAlign:"justify"}}>
                                             <p>
-For over 40 years, Kavalakat has been powering Kerala’s construction industry with premium materials, reliable delivery, and unwavering commitment to quality. We don’t just supply materials — we build lasting partnerships and stronger foundations for every project.</p>
+For over 50+ years, Kavalakat has been powering Kerala’s construction industry with premium materials, reliable delivery, and unwavering commitment to quality. We don’t just supply materials — we build lasting partnerships and stronger foundations for every project.</p>
                                         </div>
                                     </div>
                                 </div>
