@@ -59,7 +59,9 @@ const Breadcrumb = ({
 
             {image && (
                 <div className="breadcrumb-img">
+
                     <Image
+                    
                         src={image}
                         alt={imageAlt}
                         fill

@@ -225,7 +225,7 @@ const CareerPage = () => {
             <Breadcrumb
                 title="Careers"
                 subtitle="Join Our Team & Build Your Future With Us"
-                image="/assets/new-images/bm/bm-1.png"
+                image="/assets/new-images/new-images/career.webp"
             />
 
             <div className="career-page pt-120 mb-120">
