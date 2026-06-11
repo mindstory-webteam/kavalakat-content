@@ -262,6 +262,7 @@ const InnerPageHeader: React.FC = () => {
                   <li className={pathname === '/milestone'     ? 'active' : ''}><Link href="/milestone"><span>Milestones</span></Link></li>
                   <li className={pathname === '/projects'      ? 'active' : ''}><Link href="/projects"><span>Projects</span></Link></li>
                   <li className={pathname === '/gallery'       ? 'active' : ''}><Link href="/gallery"><span>Gallery</span></Link></li>
+                  <li className={pathname === '/events'        ? 'active' : ''}><Link href="/events"><span>Events</span></Link></li>
                 </ul>
               </li>
 
