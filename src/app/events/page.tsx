@@ -2,7 +2,7 @@
 import FooterTop from '@/components/FooterTop'
 import HomepageBlogSection from '@/components/HomepageBlogSection'
 import InnerPageHeader from '@/components/InnerPageHeader'
-import React, { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import Footer1 from '@/components/Footer'
 import Breadcrumb from '@/components/common/Breadcrumb'
 import Image from 'next/image'
@@ -542,6 +542,7 @@ const Page = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError]     = useState<string | null>(null)
   const [activeEvent, setActiveEvent] = useState<EventItem | null>(null)
+  const [activeFilter, setActiveFilter] = useState<string>('All')
 
   const fetchEvents = useCallback(async () => {
     setLoading(true)
@@ -567,6 +568,36 @@ const Page = () => {
   }, [])
 
   useEffect(() => { fetchEvents() }, [fetchEvents])
+
+  // ── Build filter tabs (All + each unique tag) with live counts ──
+  const filters = useMemo(() => {
+    const counts: Record<string, number> = {}
+    events.forEach((e) => {
+      const tag = (e.tag || '').trim()
+      if (!tag) return
+      counts[tag] = (counts[tag] || 0) + 1
+    })
+
+    const tagList = Object.keys(counts).sort((a, b) => counts[b] - counts[a])
+
+    return [
+      { label: 'All', count: events.length },
+      ...tagList.map((tag) => ({ label: tag, count: counts[tag] })),
+    ]
+  }, [events])
+
+  // ── Filtered events based on active tab ──
+  const filteredEvents = useMemo(() => {
+    if (activeFilter === 'All') return events
+    return events.filter((e) => (e.tag || '').trim() === activeFilter)
+  }, [events, activeFilter])
+
+  // Reset to "All" if the currently active filter no longer exists
+  useEffect(() => {
+    if (activeFilter === 'All') return
+    const exists = filters.some((f) => f.label === activeFilter)
+    if (!exists) setActiveFilter('All')
+  }, [filters, activeFilter])
 
   return (
     <>
@@ -602,6 +633,71 @@ const Page = () => {
         }
         .esc-hdr h2 span { color: var(--title-color2); }
         .esc-hdr p { font-size: 15px; color: var(--text-color); max-width: 560px; margin: 0 auto; line-height: 1.76; }
+
+        /* ══════════════════════════════════════════════════════
+           FILTER TABS  (All / Service / Trading / Distribution style)
+        ══════════════════════════════════════════════════════ */
+        .esc-filters {
+          display: flex;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 14px;
+          justify-content: center;
+          margin-bottom: 48px;
+          padding-bottom: 28px;
+          border-bottom: 1px solid var(--borders-color);
+        }
+
+        .esc-filter-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 10px;
+          font-family: var(--font-manrope);
+          font-size: 13px;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          color: var(--dark-title-color);
+          background: #fff;
+          border: 1px solid var(--borders-color);
+          border-radius: 100px;
+          padding: 12px 22px;
+          cursor: pointer;
+          transition: background 0.25s, color 0.25s, border-color 0.25s, transform 0.2s;
+        }
+        .esc-filter-btn:hover {
+          border-color: var(--primary-color1);
+          color: var(--primary-color1);
+          transform: translateY(-1px);
+        }
+        .esc-filter-btn.is-active {
+          background: var(--dark-title-color);
+          border-color: var(--dark-title-color);
+          color: #fff;
+        }
+        .esc-filter-btn.is-active:hover {
+          color: #fff;
+          transform: none;
+        }
+
+        .esc-filter-count {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-width: 24px;
+          height: 24px;
+          padding: 0 6px;
+          border-radius: 50%;
+          background: #eef0f3;
+          color: var(--dark-title-color);
+          font-family: var(--font-manrope);
+          font-size: 11px;
+          font-weight: 700;
+        }
+        .esc-filter-btn.is-active .esc-filter-count {
+          background: rgba(255,255,255,0.18);
+          color: #fff;
+        }
 
         .esc-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; }
 
@@ -728,6 +824,20 @@ const Page = () => {
           border-radius: 4px;
         }
         @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+        /* ── Empty filtered state ── */
+        .esc-empty-filter {
+          display: flex; flex-direction: column; align-items: center; justify-content: center;
+          text-align: center; min-height: 200px; gap: 14px;
+        }
+        .esc-empty-filter p { font-size: 14px; color: var(--text-color); margin: 0; }
+        .esc-empty-filter button {
+          font-family: var(--font-manrope); font-size: 11px; font-weight: 700;
+          letter-spacing: 0.1em; text-transform: uppercase;
+          color: #fff; background: var(--primary-color1); border: none;
+          padding: 11px 26px; border-radius: 100px; cursor: pointer; transition: opacity 0.2s;
+        }
+        .esc-empty-filter button:hover { opacity: 0.85; }
 
         /* ══════════════════════════════════════════════════════
            MODAL  —  left carousel  |  right content
@@ -910,6 +1020,9 @@ const Page = () => {
           .esc-grid { grid-template-columns: 1fr; }
           .esc-section { padding: 70px 0 80px; }
           .esc-hdr { margin-bottom: 50px; }
+          .esc-filters { gap: 10px; margin-bottom: 32px; padding-bottom: 22px; }
+          .esc-filter-btn { padding: 10px 16px; font-size: 11px; }
+          .esc-filter-count { min-width: 20px; height: 20px; font-size: 10px; }
           .esc-modal { border-radius: 12px; max-height: 94vh; }
           .esc-modal-overlay { padding: 12px; }
           .esc-modal-left { height: 220px; }
@@ -937,6 +1050,25 @@ const Page = () => {
               communities we serve across Kerala.
             </p>
           </div>
+
+          {/* ── Category Filter Tabs ── */}
+          {!loading && !error && events.length > 0 && filters.length > 1 && (
+            <div className="esc-filters" role="tablist" aria-label="Filter events by category">
+              {filters.map((f) => (
+                <button
+                  key={f.label}
+                  type="button"
+                  role="tab"
+                  aria-selected={activeFilter === f.label}
+                  className={`esc-filter-btn ${activeFilter === f.label ? 'is-active' : ''}`}
+                  onClick={() => setActiveFilter(f.label)}
+                >
+                  {f.label}
+                  <span className="esc-filter-count">{f.count}</span>
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* ── Loading skeletons ── */}
           {loading && (
@@ -970,17 +1102,25 @@ const Page = () => {
             </div>
           )}
 
-          {/* ── Empty ── */}
+          {/* ── Empty (no events at all) ── */}
           {!loading && !error && events.length === 0 && (
             <div className="d-flex justify-content-center align-items-center" style={{ minHeight: 240 }}>
               <p className="text-muted">No events available.</p>
             </div>
           )}
 
+          {/* ── Empty (filter has no matches) ── */}
+          {!loading && !error && events.length > 0 && filteredEvents.length === 0 && (
+            <div className="esc-empty-filter">
+              <p>No events found in &ldquo;{activeFilter}&rdquo;.</p>
+              <button type="button" onClick={() => setActiveFilter('All')}>View All Events</button>
+            </div>
+          )}
+
           {/* ── Grid ── */}
-          {!loading && !error && events.length > 0 && (
+          {!loading && !error && filteredEvents.length > 0 && (
             <div className="esc-grid">
-              {events.map((e, i) => (
+              {filteredEvents.map((e, i) => (
                 <EventCard key={e.id} event={e} index={i} onView={setActiveEvent} />
               ))}
             </div>
