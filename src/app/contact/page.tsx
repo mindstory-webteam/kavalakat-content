@@ -26,6 +26,47 @@ const INITIAL_FORM: EnquiryForm = {
 
 type SubmitStatus = 'idle' | 'loading' | 'success' | 'error'
 
+// ─── Contact location (branch) types ───────────────────────────────────────────
+
+interface ContactLocation {
+  id: number
+  branch_name: string
+  address: string
+  phone_number?: string
+  whatsapp?: string
+  email?: string
+  google_map_link?: string
+  working_hours?: string
+  display_order?: number
+  status?: string
+}
+
+interface ContactLocationsResponse {
+  success: boolean
+  pagination?: {
+    total: number
+    pages: number
+    current_page: number
+    page_size: number
+    next: string | null
+    previous: string | null
+  }
+  data: ContactLocation[]
+}
+
+const CONTACT_LOCATIONS_API = 'https://api.kavalakat.com/api/contact-locations/'
+
+async function getContactLocations(): Promise<ContactLocation[]> {
+  const res = await fetch(CONTACT_LOCATIONS_API)
+  if (!res.ok) throw new Error(`API error [${res.status}] on ${CONTACT_LOCATIONS_API}`)
+  const json: ContactLocationsResponse = await res.json()
+  if (!json?.success || !Array.isArray(json.data)) return []
+  // Only show active branches, sorted by display_order
+  return json.data
+    .filter(loc => (loc.status ?? 'active') === 'active')
+    .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0))
+}
+
 // ─── Map embed URL builder ────────────────────────────────────────────────────
 /**
  * Builds a reliable Google Maps embed URL from the address fields.
@@ -55,11 +96,24 @@ const ContactPage = () => {
   const [status,      setStatus]      = useState<SubmitStatus>('idle')
   const [errorMsg,    setErrorMsg]    = useState('')
 
+  // ── Branch / address list state ──────────────────────────────────────────
+  const [locations,       setLocations]       = useState<ContactLocation[]>([])
+  const [locationsLoading, setLocationsLoading] = useState(true)
+  const [locationsError,  setLocationsError]  = useState(false)
+
   // ── Fetch contact info ────────────────────────────────────────────────────
   useEffect(() => {
     getContact().then((data) => {
       if (data) setContactInfo(data)
     })
+  }, [])
+
+  // ── Fetch branch/address list ─────────────────────────────────────────────
+  useEffect(() => {
+    getContactLocations()
+      .then((data) => setLocations(data))
+      .catch(() => setLocationsError(true))
+      .finally(() => setLocationsLoading(false))
   }, [])
 
   // ── Form change handler ───────────────────────────────────────────────────
@@ -227,6 +281,14 @@ const ContactPage = () => {
         .map-open-overlay:hover {
           background: #1a1a1a;
           color: #fff;
+        }
+
+        /* ── Address-list loading / empty state ── */
+        .address-list-status {
+          text-align: center;
+          padding: 24px;
+          color: #777;
+          font-size: 0.9rem;
         }
       `}</style>
 
@@ -431,50 +493,36 @@ const ContactPage = () => {
 
        <div className="contact-page-address-section mb-120">
   <div className="container">
-   
-    <ul className="address-list">
 
-      {/* Branch 1 */}
-      <li className="single-address">
-        <span>THRISSUR</span>
-        <a href="https://maps.app.goo.gl/1cosSuNMFq8UM1Vw9">
-          IX/83-4, Kuttanellur, NH-47 Bye-Pass, Thrissur - 680 014
-        </a>
-      </li>
+    {locationsLoading && (
+      <p className="address-list-status">Loading our branches…</p>
+    )}
 
-      {/* Branch 2 */}
-      <li className="single-address">
-        <span>PALAKKAD</span>
-        <a href="https://maps.app.goo.gl/Vyd1NL61Q1cgMTvY7">
-          VII/320, Menonpara, Ozhalapathy, Vadakarapathy Grama Panchayath, Palakkad
-        </a>
-      </li>
+    {!locationsLoading && locationsError && (
+      <p className="address-list-status">Unable to load branch addresses right now.</p>
+    )}
 
-      {/* Branch 3 */}
-      <li className="single-address">
-        <span>KANNUR</span>
-        <a href="https://www.google.com/maps">
-          N.PXV-340/D, Near Kairali Heritage Resort, Kattampally, P.O Narath - 670 015, Kannur
-        </a>
-      </li>
+    {!locationsLoading && !locationsError && locations.length === 0 && (
+      <p className="address-list-status">No branch addresses available.</p>
+    )}
 
-      {/* Branch 4 */}
-      <li className="single-address">
-        <span>IDUKKI</span>
-        <a href="https://www.google.com/maps">
-          27/124-I, Kokkappalli, Plamoodu, Irupathekkar, Kattappana, Idukki, Kerala - 685 511
-        </a>
-      </li>
+    {!locationsLoading && !locationsError && locations.length > 0 && (
+      <ul className="address-list">
+        {locations.map((loc) => (
+          <li className="single-address" key={loc.id}>
+            <span>{loc.branch_name?.toUpperCase()}</span>
+            <a
+              href={loc.google_map_link?.trim() || 'https://www.google.com/maps'}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {loc.address}
+            </a>
+          </li>
+        ))}
+      </ul>
+    )}
 
-      {/* Branch 5 — Kavalakat Associates */}
-      <li className="single-address">
-        <span>PALAKKAD</span>
-        <a href="https://maps.app.goo.gl/Vyd1NL61Q1cgMTvY7">
-          XVII/306/5, N.H. Road, Manappullikavu, Palakkad, Kerala - 678 013
-        </a>
-      </li>
-
-    </ul>
   </div>
 </div>
 
