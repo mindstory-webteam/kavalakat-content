@@ -488,13 +488,17 @@ const PortfolioDetailPage = () => {
       {brands.length > 0 && (
         <div className="steel-partners-section mb-120">
           <div className="container">
-            <div className="row mb-50">
-              <div className="col-12">
-                <h2 className="section-main-title">
-                  {item.brands_heading || `${item.name} Brands We Supply`}
-                </h2>
+            {/* ✅ Heading shows ONLY when it comes from the backend (brands_heading).
+                No auto-generated fallback like `${item.name} Brands We Supply`. */}
+            {item.brands_heading && item.brands_heading.trim() && (
+              <div className="row mb-50">
+                <div className="col-12">
+                  <h2 className="section-main-title">
+                    {item.brands_heading}
+                  </h2>
+                </div>
               </div>
-            </div>
+            )}
             <div className="row g-4 justify-content-center">
               {brands.map((brand, i) => (
                 <div key={i} className="col-lg-4 col-md-6 col-sm-12">
