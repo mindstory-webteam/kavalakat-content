@@ -7,6 +7,11 @@
 // So we DON'T need the detail endpoint for content — list is the source of truth.
 // Detail endpoint is only called as a bonus for any extra fields it may add.
 // The old `...detail` spread was WIPING good list data with empty detail strings — FIXED.
+//
+// ✅ EMPTY-SPACE FIX:
+// The Hero/About block used to render ALWAYS (with pt-120 mb-120 ≈ 240px + a
+// fallback image), leaving a huge blank gap when an item had no about content.
+// It now renders only when there's real text, a real image, or bottom_html.
 
 import FooterTop from '@/components/FooterTop'
 import InnerPageHeader from '@/components/InnerPageHeader'
@@ -289,7 +294,10 @@ const PortfolioDetailPage = () => {
   }, [itemSlug, categorySlug])
 
   // ── Testimonial auto-slide ─────────────────────────────────────────────────
-  const testimonials = item?.testimonials ?? []
+  // ✅ Keep only testimonials that actually have content (drop blank rows)
+  const testimonials = (item?.testimonials ?? []).filter(
+    t => (t.title?.trim() || t.description?.trim() || t.client_name?.trim())
+  )
 
   useEffect(() => {
     if (!testimonials.length) return
@@ -310,8 +318,13 @@ const PortfolioDetailPage = () => {
   const next = () => { stopTimer(); setCurrentSlide(p => (p + 1) % testimonials.length); startTimer() }
   const prev = () => { stopTimer(); setCurrentSlide(p => (p - 1 + testimonials.length) % testimonials.length); startTimer() }
 
-  const features = item?.features ?? []
-  const brands   = item?.brands   ?? []
+  // ✅ Keep only entries that have real content (drop blank rows from the CMS)
+  const features = (item?.features ?? []).filter(
+    f => (f.title?.trim() || f.description?.trim())
+  )
+  const brands = (item?.brands ?? []).filter(
+    b => (b.title?.trim() || b.description?.trim() || b.logo_url?.trim())
+  )
 
   // ── Loading ────────────────────────────────────────────────────────────────
   if (loading) return (
@@ -372,6 +385,19 @@ const PortfolioDetailPage = () => {
   const heroParas = (item.about_description || item.description || '')
     .split('\n\n').filter(Boolean)
 
+  // ✅ Does the About block have anything worth showing?
+  const hasAboutText    = Boolean(item.about_title.trim() || heroParas.length)
+  const hasAboutImage   = Boolean(item.about_image_url || item.image_url)
+  const hasBottomHtml   = Boolean(item.bottom_html && item.bottom_html.trim())
+  const hasAboutSection = hasAboutText || hasAboutImage || hasBottomHtml
+
+  // ✅ Is the whole page essentially empty (only breadcrumb would show)?
+  const isEmptyPage =
+    !hasAboutSection &&
+    features.length === 0 &&
+    brands.length === 0 &&
+    testimonials.length === 0
+
   return (
     <>
       <InnerPageHeader />
@@ -382,42 +408,53 @@ const PortfolioDetailPage = () => {
         image={item.banner_image_url || item.image_url || PLACEHOLDER}
       />
 
-      {/* ── Hero / About ───────────────────────────────────────────────────── */}
-      <div className="product-details-top-area pt-120 mb-120" id="scroll-section">
-        <div className="container">
-          <div className="row gy-md-5 gy-4 align-items-lg-end">
+      {/* ── Hero / About (only renders when there's actual content) ─────────── */}
+      {hasAboutSection && (
+        <div className="product-details-top-area pt-120 mb-120" id="scroll-section">
+          <div className="container">
+            <div className="row gy-md-5 gy-4 align-items-lg-end">
 
-            <div className="col-lg-8 wow animate fadeInLeft" data-wow-delay="200ms" data-wow-duration="1500ms">
-              <div className="details-content">
-                <h2>{ item.about_title}</h2>
-                {heroParas.length > 0
-                  ? heroParas.map((p, i) => <p key={i} style={{ textAlign: 'justify' }}>{p}</p>)
-                  : <p style={{ textAlign: 'justify', opacity: 0.6 }}>{item.description }</p>
-                }
-              </div>
+              {hasAboutText && (
+                <div
+                  className={`${hasAboutImage ? 'col-lg-8' : 'col-12'} wow animate fadeInLeft`}
+                  data-wow-delay="200ms" data-wow-duration="1500ms"
+                >
+                  <div className="details-content">
+                    {item.about_title.trim() && <h2>{item.about_title}</h2>}
+                    {heroParas.map((p, i) => (
+                      <p key={i} style={{ textAlign: 'justify' }}>{p}</p>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {hasAboutImage && (
+                <div
+                  className={`${hasAboutText ? 'col-lg-4' : 'col-12'} wow animate fadeInRight`}
+                  data-wow-delay="200ms" data-wow-duration="1500ms"
+                >
+                  <div className="product-img">
+                    <Image
+                      width={340} height={270}
+                      src={item.about_image_url || item.image_url || PLACEHOLDER}
+                      alt={item.name}
+                      style={{ width: '100%', height: 'auto', objectFit: 'cover', borderRadius: 8 }}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
-            <div className="col-lg-4 wow animate fadeInRight" data-wow-delay="200ms" data-wow-duration="1500ms">
-              <div className="product-img">
-                <Image
-                  width={340} height={270}
-                  src={item.about_image_url || item.image_url || '/assets/new-images/new-images/about-imges/img-1.webp'}
-                  alt={item.name}
-                  style={{ width: '100%', height: 'auto', objectFit: 'cover', borderRadius: 8 }}
-                />
-              </div>
-            </div>
+            {/* ✅ Bottom HTML — rendered below about section, inside container */}
+            {hasBottomHtml && (
+              <div
+                className="portfolio-bottom-html mt-5"
+                dangerouslySetInnerHTML={{ __html: item.bottom_html as string }}
+              />
+            )}
           </div>
-
-          {/* ✅ Bottom HTML — rendered below about section, inside container */}
-          {item.bottom_html && item.bottom_html.trim() && (
-            <div
-              className="portfolio-bottom-html mt-5"
-              dangerouslySetInnerHTML={{ __html: item.bottom_html }}
-            />
-          )}
         </div>
-      </div>
+      )}
 
       {/* ── Features / FAQ ─────────────────────────────────────────────────── */}
       {features.length > 0 && (
@@ -604,6 +641,13 @@ const PortfolioDetailPage = () => {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ── Empty fallback (item exists but has zero content sections) ──────── */}
+      {isEmptyPage && (
+        <div className="container pt-120 mb-120 text-center" style={{ color: '#999' }}>
+          <p>More details about this product are coming soon.</p>
         </div>
       )}
 
