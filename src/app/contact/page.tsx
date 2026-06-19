@@ -290,6 +290,56 @@ const ContactPage = () => {
           color: #777;
           font-size: 0.9rem;
         }
+
+        /* ──────────────────────────────────────────────────────────────
+           Branch address grid — EQUAL HEIGHT cards with aligned bottoms
+           Lays the branches out as an even grid so every column is the
+           same height, and lets the address text grow so the bottom
+           divider line of each card lands on the same baseline.
+           ────────────────────────────────────────────────────────────── */
+        .contact-page-address-section .address-list {
+          display: grid !important;
+          grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+          gap: 48px 32px;
+          align-items: stretch;
+          list-style: none;
+          margin: 0;
+          padding: 0;
+        }
+        .contact-page-address-section .single-address {
+          display: flex;
+          flex-direction: column;
+          height: 100%;       /* fill the equal-height grid cell */
+          margin: 0;          /* grid gap handles spacing */
+        }
+        /* address text expands to fill, pushing the underline/divider to the bottom */
+        .contact-page-address-section .single-address > a {
+          flex: 1 1 auto;
+        }
+
+        /* Responsive column counts */
+        @media (max-width: 1399px) {
+          .contact-page-address-section .address-list {
+            grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+          }
+        }
+        @media (max-width: 1199px) {
+          .contact-page-address-section .address-list {
+            grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+          }
+        }
+        @media (max-width: 767px) {
+          .contact-page-address-section .address-list {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            gap: 36px 24px;
+          }
+        }
+        @media (max-width: 479px) {
+          .contact-page-address-section .address-list {
+            grid-template-columns: 1fr !important;
+            gap: 32px;
+          }
+        }
       `}</style>
 
       <div className="inner-contact-section two pt-120 mb-120" id="scroll-section">
