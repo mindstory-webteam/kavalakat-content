@@ -1,7 +1,10 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, X, MessageCircle, Loader2, Phone, Mail, Download, User, CheckCircle2, AlertCircle } from 'lucide-react';
+import {
+  Send, X, MessageCircle, Loader2, Phone, Mail, Download,
+  User, MessageSquare, AlertCircle,
+} from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -12,9 +15,24 @@ interface Message {
   timestamp : Date;
 }
 
+interface UserDetails {
+  name  : string;
+  phone : string;
+  email : string;
+  query : string;
+}
+
+type ChatStep =
+  | 'welcome'
+  | 'collect_name'
+  | 'collect_phone'
+  | 'collect_email'
+  | 'collect_query'
+  | 'chat';
+
 interface ChatbotWidgetProps {
-  apiEndpoint    ?: string;
-  leadsEndpoint  ?: string;
+  /** Base API url — chat endpoint = `${apiBase}/chat/`, lead endpoint = `${apiBase}/chat/lead/` */
+  apiBase        ?: string;
   brandColor     ?: string;
   brandName      ?: string;
   companyName    ?: string;
@@ -23,18 +41,25 @@ interface ChatbotWidgetProps {
   whatsappNumber ?: string;
   brochureUrl    ?: string;
   brochureLabel  ?: string;
+  logoUrl        ?: string;
 }
 
-// ─── Quick reply suggestions ──────────────────────────────────────────────────
+// ─── Quick reply suggestions (shown in free-chat phase) ──────────────────────
 
 const QUICK_REPLIES = [
-  { label: '📋 Our Services',   msg: 'What services do you offer?' },
-  { label: '🏗️ Portfolio',      msg: 'Show me your portfolio' },
-  { label: '📍 Location',       msg: 'Where are you located?' },
-  { label: '📞 Contact',        msg: 'How can I contact you?' },
-  { label: '💼 Careers',        msg: 'Are you hiring?' },
-  { label: '🏢 About Us',       msg: 'Tell me about Kavalakat' },
-  { label: '📝 Get a Quote',    msg: 'I would like to get a quote' },
+  { label: '📋 Our Services', msg: 'What services do you offer?' },
+  { label: '🏗️ Portfolio',    msg: 'Show me your portfolio' },
+  { label: '📍 Location',     msg: 'Where are you located?' },
+  { label: '📞 Contact',      msg: 'How can I contact you?' },
+  { label: '💼 Careers',      msg: 'Are you hiring?' },
+];
+
+// Query suggestions (shown at lead step 4)
+const QUERY_SUGGESTIONS = [
+  'I need a project quote',
+  'Tell me about your services',
+  'I want a consultation',
+  'Partnership enquiry',
 ];
 
 // ─── Session key ──────────────────────────────────────────────────────────────
@@ -50,9 +75,11 @@ function getSessionKey(): string {
   return k;
 }
 
+const LEAD_KEY = 'kav_chat_lead_date';
+
 // ─── Bold / bullet renderer ───────────────────────────────────────────────────
 
-function RenderMessage({ content, color }: { content: string; color: string }) {
+function RenderMessage({ content }: { content: string }) {
   const lines = content.split('\n');
   return (
     <div>
@@ -78,165 +105,35 @@ function RenderMessage({ content, color }: { content: string; color: string }) {
   );
 }
 
-// ─── Lead capture form (inline bubble) ─────────────────────────────────────────
-
-interface LeadFormProps {
-  color        : string;
-  defaultQuery : string;
-  submitting   : boolean;
-  error        : string;
-  onSubmit     : (name: string, phone: string, email: string, query: string) => void;
-  onDismiss    : () => void;
-}
-
-function LeadCaptureForm({ color, defaultQuery, submitting, error, onSubmit, onDismiss }: LeadFormProps) {
-  const [name,  setName]  = useState('');
-  const [phone, setPhone] = useState('');
-  const [email, setEmail] = useState('');
-  const [query, setQuery] = useState(defaultQuery);
-
-  const inputStyle: React.CSSProperties = {
-    width       : '100%',
-    padding     : '9px 12px',
-    border      : '1.5px solid #e2e8f0',
-    borderRadius: '8px',
-    fontSize    : '0.83rem',
-    outline     : 'none',
-    fontFamily  : 'inherit',
-    color       : '#1e293b',
-    marginBottom: '8px',
-    boxSizing   : 'border-box',
-  };
-
-  const canSubmit = name.trim().length > 0 && (phone.trim().length > 0 || email.trim().length > 0);
-
-  return (
-    <div style={{
-      background   : 'white',
-      border       : '1.5px solid #e2e8f0',
-      borderRadius : '14px',
-      padding      : '14px',
-      boxShadow    : '0 2px 10px rgba(0,0,0,0.06)',
-      animation    : 'kavFadeIn 0.25s ease',
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-        <div style={{
-          width: '28px', height: '28px', borderRadius: '50%',
-          backgroundColor: `${color}1a`, color,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-        }}>
-          <User size={15} />
-        </div>
-        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#1e293b' }}>
-          Leave your details — we'll get back to you!
-        </div>
-      </div>
-
-      <input
-        type="text" placeholder="Your name *" value={name}
-        onChange={e => setName(e.target.value)} style={inputStyle}
-        onFocus={e => (e.currentTarget.style.borderColor = color)}
-        onBlur={e => (e.currentTarget.style.borderColor = '#e2e8f0')}
-      />
-      <input
-        type="tel" placeholder="Phone number" value={phone}
-        onChange={e => setPhone(e.target.value)} style={inputStyle}
-        onFocus={e => (e.currentTarget.style.borderColor = color)}
-        onBlur={e => (e.currentTarget.style.borderColor = '#e2e8f0')}
-      />
-      <input
-        type="email" placeholder="Email address" value={email}
-        onChange={e => setEmail(e.target.value)} style={inputStyle}
-        onFocus={e => (e.currentTarget.style.borderColor = color)}
-        onBlur={e => (e.currentTarget.style.borderColor = '#e2e8f0')}
-      />
-      <textarea
-        placeholder="What are you looking for?" value={query}
-        onChange={e => setQuery(e.target.value)}
-        rows={2}
-        style={{ ...inputStyle, resize: 'none', marginBottom: '4px' }}
-        onFocus={e => (e.currentTarget.style.borderColor = color)}
-        onBlur={e => (e.currentTarget.style.borderColor = '#e2e8f0')}
-      />
-
-      <p style={{ fontSize: '0.68rem', color: '#94a3b8', margin: '2px 0 10px' }}>
-        Please share a phone number or an email so we can reach you.
-      </p>
-
-      {error && (
-        <p style={{ fontSize: '0.72rem', color: '#ef4444', margin: '0 0 8px' }}>{error}</p>
-      )}
-
-      <div style={{ display: 'flex', gap: '8px' }}>
-        <button
-          type="button"
-          disabled={!canSubmit || submitting}
-          onClick={() => onSubmit(name.trim(), phone.trim(), email.trim(), query.trim())}
-          style={{
-            flex: 1, padding: '9px', borderRadius: '8px', border: 'none',
-            backgroundColor: !canSubmit || submitting ? '#cbd5e1' : color,
-            color: 'white', fontSize: '0.82rem', fontWeight: 700,
-            cursor: !canSubmit || submitting ? 'not-allowed' : 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-          }}
-        >
-          {submitting ? <Loader2 size={14} style={{ animation: 'kavSpin 0.8s linear infinite' }} /> : 'Submit'}
-        </button>
-        <button
-          type="button" onClick={onDismiss}
-          style={{
-            padding: '9px 14px', borderRadius: '8px', border: '1.5px solid #e2e8f0',
-            backgroundColor: 'white', color: '#64748b', fontSize: '0.82rem',
-            fontWeight: 600, cursor: 'pointer',
-          }}
-        >
-          Not now
-        </button>
-      </div>
-    </div>
-  );
-}
-
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function ChatbotWidget({
-  apiEndpoint    = 'https://api.kavalakat.com/api/chat/',
-  leadsEndpoint,
+  apiBase        = 'https://api.kavalakat.com/api',
   brandColor     = '#0077be',
   brandName      = 'AI Assistant',
   companyName    = 'Kavalakat',
   phoneNumber    = '0487 244 0380',
-  email          = 'info@kavalakat.com',
+  email          = 'contact@kavalakat.com',
   whatsappNumber = '916238000000',
-  brochureUrl = '/Kavalakat-Brochure.pdf',
+  brochureUrl    = '/kavalakat-brochure.pdf',
   brochureLabel  = 'Download Brochure',
+  logoUrl        = '',
 }: ChatbotWidgetProps) {
 
-  const [isOpen,        setIsOpen]        = useState(false);
-  const [inputValue,    setInputValue]    = useState('');
-  const [isLoading,     setIsLoading]     = useState(false);
-  const [showQuickReply,setShowQuickReply]= useState(true);
-  const [sessionKey]                      = useState<string>(getSessionKey);
-  const [messages,      setMessages]      = useState<Message[]>([
-    {
-      id       : 'welcome',
-      role     : 'assistant',
-      content  : `Hi! 👋 I'm ${brandName} from ${companyName}.\n\nHow can I help you today? Use the quick buttons below or type your question!`,
-      timestamp: new Date(),
-    },
-  ]);
+  const API_BASE = apiBase.replace(/\/$/, '');
 
-  // ── Lead capture state ──────────────────────────────────────────────────────
-  const [showLeadForm,   setShowLeadForm]   = useState(false);
-  const [leadSubmitted,  setLeadSubmitted]  = useState(false);
-  const [leadSubmitting, setLeadSubmitting] = useState(false);
-  const [leadError,      setLeadError]      = useState('');
-  const [lastUserQuery,  setLastUserQuery]  = useState('');
-  const leadPromptedRef = useRef(false); // only auto-prompt once per session
+  const [isOpen,         setIsOpen]         = useState(false);
+  const [step,           setStep]           = useState<ChatStep>('welcome');
+  const [inputValue,     setInputValue]     = useState('');
+  const [isLoading,      setIsLoading]      = useState(false);
+  const [showQuickReply, setShowQuickReply] = useState(true);
+  const [sessionKey]                        = useState<string>(getSessionKey);
+  const [messages,       setMessages]       = useState<Message[]>([]);
+  const [userDetails,    setUserDetails]    = useState<UserDetails>({
+    name: '', phone: '', email: '', query: '',
+  });
 
-  const resolvedLeadsEndpoint = leadsEndpoint ?? `${apiEndpoint.replace(/\/?$/, '/')}leads/`;
-
-  // ── Brochure download state ──────────────────────────────────────────────
+  // ── Brochure download state ───────────────────────────────────────────────
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState(false);
 
@@ -245,13 +142,27 @@ export default function ChatbotWidget({
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, showLeadForm]);
+  }, [messages, isLoading]);
 
   useEffect(() => {
-    if (isOpen) setTimeout(() => inputRef.current?.focus(), 300);
-  }, [isOpen]);
+    if (isOpen && step !== 'welcome') {
+      setTimeout(() => inputRef.current?.focus(), 300);
+    }
+  }, [isOpen, step]);
 
-  // ── Contact handlers ──────────────────────────────────────────────────────
+  // ── Message helpers ────────────────────────────────────────────────────────
+
+  const pushAssistantMsg = (content: string) =>
+    setMessages(prev => [...prev, {
+      id: `${Date.now()}-a`, role: 'assistant', content, timestamp: new Date(),
+    }]);
+
+  const pushUserMsg = (content: string) =>
+    setMessages(prev => [...prev, {
+      id: `${Date.now()}-u`, role: 'user', content, timestamp: new Date(),
+    }]);
+
+  // ── Contact handlers ───────────────────────────────────────────────────────
 
   const handleCall = useCallback(() => {
     window.location.href = `tel:${phoneNumber.replace(/\s/g, '')}`;
@@ -284,12 +195,12 @@ export default function ChatbotWidget({
       const res = await fetch(brochureUrl);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-      const blob = await res.blob();
+      const blob    = await res.blob();
       const blobUrl = URL.createObjectURL(blob);
 
-      const a = document.createElement('a');
-      a.href = blobUrl;
-      a.download = 'Kavalakat-Brochure.pdf';
+      const a    = document.createElement('a');
+      a.href     = blobUrl;
+      a.download = `${companyName}-Brochure.pdf`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -309,76 +220,145 @@ export default function ChatbotWidget({
     } finally {
       setIsDownloading(false);
     }
-  }, [brochureUrl, isDownloading]);
+  }, [brochureUrl, companyName, isDownloading]);
 
-  // ── Lead submit ───────────────────────────────────────────────────────────
+  // ── Start chat (welcome → workflow) ────────────────────────────────────────
 
-  const submitLead = useCallback(async (name: string, phone: string, formEmail: string, query: string) => {
-    setLeadSubmitting(true);
-    setLeadError('');
+  const startChat = () => {
+    // Lead already submitted today → skip straight to free chat
+    const lastSubDate = typeof window !== 'undefined'
+      ? localStorage.getItem(LEAD_KEY)
+      : null;
+
+    if (lastSubDate === new Date().toDateString()) {
+      setStep('chat');
+      setMessages([]);
+      setTimeout(() => pushAssistantMsg(
+        `Welcome back! 👋 We have already received your details today and our team is working on your query.\n\nMeanwhile, feel free to ask me anything about ${companyName} — I'm happy to help!`
+      ), 200);
+      return;
+    }
+
+    setStep('collect_name');
+    setMessages([]);
+    setTimeout(() => pushAssistantMsg(
+      `Hi! 👋 I'm ${brandName} from ${companyName}.\n\nBefore we begin, may I know your name?`
+    ), 200);
+  };
+
+  // ── Lead workflow step handlers ────────────────────────────────────────────
+
+  const handleSubmitName = (val: string) => {
+    const name = val.trim();
+    if (!name) return;
+
+    const lowerName = name.toLowerCase().replace(/[^\w\s]/g, '');
+    if (['hi', 'hello', 'hey', 'hola', 'greetings'].includes(lowerName)) {
+      pushUserMsg(name);
+      setIsLoading(true);
+      setTimeout(() => {
+        setIsLoading(false);
+        pushAssistantMsg('Hello! 😊 Could you please tell me your name so we can proceed?');
+      }, 400);
+      return;
+    }
+
+    setUserDetails(d => ({ ...d, name }));
+    pushUserMsg(name);
+    setIsLoading(true);
+    setTimeout(() => {
+      setIsLoading(false);
+      setStep('collect_phone');
+      pushAssistantMsg(`Nice to meet you, **${name}**! 🙌\n\nCould you please share your phone number so our team can reach you?`);
+    }, 700);
+  };
+
+  const handleSubmitPhone = (val: string) => {
+    const phone = val.trim();
+    if (!phone) return;
+
+    if (!/^[6-9]\d{9}$/.test(phone)) {
+      pushUserMsg(phone);
+      setTimeout(() => pushAssistantMsg('Please enter a valid **10-digit** Indian mobile number (starting with 6–9). 📱'), 400);
+      return;
+    }
+
+    setUserDetails(d => ({ ...d, phone }));
+    pushUserMsg(phone);
+    setIsLoading(true);
+    setTimeout(() => {
+      setIsLoading(false);
+      setStep('collect_email');
+      pushAssistantMsg('Great! ✅ What is your **email address**? We will send the details there.');
+    }, 700);
+  };
+
+  const handleSubmitEmail = (val: string) => {
+    const emailVal = val.trim();
+    if (!emailVal) return;
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)) {
+      pushUserMsg(emailVal);
+      setTimeout(() => pushAssistantMsg('Hmm, that does not look like a valid email address. Could you double-check? ✉️'), 400);
+      return;
+    }
+
+    setUserDetails(d => ({ ...d, email: emailVal }));
+    pushUserMsg(emailVal);
+    setIsLoading(true);
+    setTimeout(() => {
+      setIsLoading(false);
+      setStep('collect_query');
+      pushAssistantMsg('Perfect! 🎯 How can we help you today?\n\nSelect an option below or type your own query.');
+    }, 700);
+  };
+
+  const handleSubmitQuery = async (val: string) => {
+    const query = val.trim();
+    if (!query || isLoading) return;
+
+    const payload = { ...userDetails, query, session_key: sessionKey };
+    setUserDetails(prev => ({ ...prev, query }));
+    pushUserMsg(query);
+    setIsLoading(true);
+
+    // ── Send lead to backend ──
     try {
-      const res = await fetch(resolvedLeadsEndpoint, {
+      const res = await fetch(`${API_BASE}/chat/lead/`, {
         method : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body   : JSON.stringify({
-          session_key: sessionKey,
-          name,
-          phone,
-          email: formEmail,
-          query: query || lastUserQuery || 'General enquiry from chatbot',
-        }),
+        body   : JSON.stringify(payload),
       });
-      const data = await res.json();
-
-      if (!res.ok) {
-        const firstError =
-          (data && (data.non_field_errors?.[0] || data.name?.[0] || data.email?.[0] || data.phone?.[0])) ||
-          'Please check your details and try again.';
-        setLeadError(firstError);
-        return;
-      }
-
-      setLeadSubmitted(true);
-      setShowLeadForm(false);
-      setMessages(prev => [
-        ...prev,
-        {
-          id       : (Date.now() + 2).toString(),
-          role     : 'assistant',
-          content  : data.message || "Thanks! We've received your details and our team will reach out shortly. 🙌",
-          timestamp: new Date(),
-        },
-      ]);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      localStorage.setItem(LEAD_KEY, new Date().toDateString());
     } catch (err) {
-      console.error('Lead submit error:', err);
-      setLeadError('Something went wrong. Please try again or call us directly.');
-    } finally {
-      setLeadSubmitting(false);
+      console.error('Failed to save chatbot lead:', err);
+      // Continue anyway — don't block the user from chatting
     }
-  }, [resolvedLeadsEndpoint, sessionKey, lastUserQuery]);
 
-  // ── Core send ─────────────────────────────────────────────────────────────
+    setTimeout(() => {
+      setIsLoading(false);
+      setStep('chat');
+      pushAssistantMsg(
+        `Thank you, **${payload.name}**! ✅\n\nWe have noted your query: "${query}"\n\nOur team will reach out to you at **${payload.phone}** shortly. Meanwhile, feel free to ask me anything about ${companyName}!`
+      );
+      setShowQuickReply(true);
+    }, 600);
+  };
 
-  const sendMessage = useCallback(async (overrideText?: string) => {
+  // ── Free chat via backend AI API ───────────────────────────────────────────
+
+  const sendChatMessage = useCallback(async (overrideText?: string) => {
     const text = (overrideText ?? inputValue).trim();
     if (!text || isLoading) return;
 
-    // Hide quick replies after first message
     setShowQuickReply(false);
-    setLastUserQuery(text);
-
-    const userMsg: Message = {
-      id       : Date.now().toString(),
-      role     : 'user',
-      content  : text,
-      timestamp: new Date(),
-    };
-    setMessages(prev => [...prev, userMsg]);
+    pushUserMsg(text);
     if (!overrideText) setInputValue('');
     setIsLoading(true);
 
     try {
-      const res = await fetch(apiEndpoint, {
+      const res = await fetch(`${API_BASE}/chat/`, {
         method : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body   : JSON.stringify({
@@ -389,47 +369,51 @@ export default function ChatbotWidget({
 
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-
-      setMessages(prev => [
-        ...prev,
-        {
-          id       : (Date.now() + 1).toString(),
-          role     : 'assistant',
-          content  : data.message || "Sorry, I couldn't process that.",
-          timestamp: new Date(),
-        },
-      ]);
-
-      // Show the lead-capture form once, when the backend signals buying intent
-      if (data.capture_lead && !leadSubmitted && !leadPromptedRef.current) {
-        leadPromptedRef.current = true;
-        setShowLeadForm(true);
-      }
+      pushAssistantMsg(data.message || "Sorry, I couldn't process that.");
     } catch (err) {
       console.error('Chat error:', err);
-      setMessages(prev => [
-        ...prev,
-        {
-          id       : (Date.now() + 1).toString(),
-          role     : 'assistant',
-          content  : `Sorry, something went wrong. 😔\nPlease call us at ${phoneNumber} or try again!`,
-          timestamp: new Date(),
-        },
-      ]);
+      pushAssistantMsg(
+        `Sorry, something went wrong. 😔\nPlease call us at ${phoneNumber} or try again!`
+      );
     } finally {
       setIsLoading(false);
     }
-  }, [inputValue, isLoading, apiEndpoint, sessionKey, phoneNumber, leadSubmitted]);
+  }, [inputValue, isLoading, API_BASE, sessionKey, phoneNumber]);
 
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        sendMessage();
-      }
-    },
-    [sendMessage],
-  );
+  // ── Unified send router ────────────────────────────────────────────────────
+
+  const handleSendMessage = () => {
+    if (!inputValue.trim() || isLoading) return;
+    const value = inputValue.trim();
+    setInputValue('');
+
+    switch (step) {
+      case 'collect_name':  return handleSubmitName(value);
+      case 'collect_phone': return handleSubmitPhone(value);
+      case 'collect_email': return handleSubmitEmail(value);
+      case 'collect_query': return handleSubmitQuery(value);
+      case 'chat':          return sendChatMessage(value);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
+  const getPlaceholder = () => {
+    switch (step) {
+      case 'collect_name':  return 'Enter your full name...';
+      case 'collect_phone': return 'Enter 10-digit mobile number...';
+      case 'collect_email': return 'Enter your email address...';
+      case 'collect_query': return 'Describe your query...';
+      default:              return 'Type your message...';
+    }
+  };
+
+  const showProgress = ['collect_name', 'collect_phone', 'collect_email', 'collect_query'].includes(step);
 
   // ── Side button styles ────────────────────────────────────────────────────
 
@@ -572,6 +556,7 @@ export default function ChatbotWidget({
       {/* ── Chat window ───────────────────────────────────────────────────── */}
       {isOpen && (
         <div
+          className="kav-window"
           role="dialog"
           aria-label="Chat Assistant"
           aria-modal="true"
@@ -611,9 +596,12 @@ export default function ChatbotWidget({
                 width: '42px', height: '42px', borderRadius: '50%',
                 backgroundColor: 'rgba(255,255,255,0.2)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                flexShrink: 0,
+                flexShrink: 0, overflow: 'hidden',
               }}>
-                <MessageCircle size={21} />
+                {logoUrl
+                  ? <img src={logoUrl} alt={companyName} style={{ width: '65%', height: '65%', objectFit: 'contain' }} />
+                  : <MessageCircle size={21} />
+                }
               </div>
               <div>
                 <h3 style={{ fontWeight: 700, fontSize: '1rem', margin: 0, lineHeight: 1.2 }}>
@@ -632,243 +620,368 @@ export default function ChatbotWidget({
                 </p>
               </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              {!leadSubmitted && (
-                <button
-                  onClick={() => { setLeadError(''); setShowLeadForm(true); }}
-                  title="Request a callback"
-                  style={{
-                    background: 'rgba(255,255,255,0.15)', border: 'none', color: 'white',
-                    cursor: 'pointer', height: '32px', borderRadius: '8px', padding: '0 10px',
-                    display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.72rem', fontWeight: 600,
-                  }}
-                  onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.3)')}
-                  onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.15)')}>
-                  <User size={14} /> Callback
-                </button>
-              )}
-              <button onClick={() => setIsOpen(false)} aria-label="Close chat"
-                style={{
-                  background: 'rgba(255,255,255,0.15)', border: 'none', color: 'white',
-                  cursor: 'pointer', width: '32px', height: '32px', borderRadius: '8px',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  transition: 'background 0.2s',
-                }}
-                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.3)')}
-                onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.15)')}>
-                <X size={18} />
-              </button>
-            </div>
-          </div>
-
-          {/* Messages */}
-          <div role="log" aria-live="polite" style={{
-            flex: 1, overflowY: 'auto', padding: '14px',
-            backgroundColor: '#f8fafc',
-            display: 'flex', flexDirection: 'column', gap: '10px',
-          }}>
-            {messages.map(msg => (
-              <div key={msg.id} style={{
-                display: 'flex',
-                justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
-                animation: 'kavFadeIn 0.22s ease',
-              }}>
-                <div style={{
-                  maxWidth       : '80%',
-                  borderRadius   : msg.role === 'user' ? '16px 16px 4px 16px' : '4px 16px 16px 16px',
-                  padding        : '10px 14px',
-                  backgroundColor: msg.role === 'user' ? brandColor : 'white',
-                  color          : msg.role === 'user' ? 'white' : '#1e293b',
-                  border         : msg.role === 'assistant' ? '1px solid #e2e8f0' : 'none',
-                  boxShadow      : msg.role === 'assistant'
-                    ? '0 1px 4px rgba(0,0,0,0.06)'
-                    : `0 2px 8px ${brandColor}33`,
-                }}>
-                  <div style={{ fontSize: '0.875rem', margin: 0, wordBreak: 'break-word' }}>
-                    <RenderMessage content={msg.content} color={brandColor} />
-                  </div>
-                  <span style={{
-                    fontSize: '0.67rem', opacity: 0.55, marginTop: '5px',
-                    display: 'block', textAlign: msg.role === 'user' ? 'right' : 'left',
-                  }}>
-                    {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                </div>
-              </div>
-            ))}
-
-            {/* Quick reply buttons — shown only at start */}
-            {showQuickReply && !isLoading && (
-              <div style={{ animation: 'kavFadeIn 0.3s ease' }}>
-                <p style={{ fontSize: '0.72rem', color: '#94a3b8', margin: '4px 0 8px' }}>
-                  Quick questions:
-                </p>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                  {QUICK_REPLIES.map(qr => (
-                    <button
-                      key={qr.msg}
-                      onClick={() => sendMessage(qr.msg)}
-                      style={{
-                        background   : 'white',
-                        border       : `1.5px solid ${brandColor}44`,
-                        borderRadius : '20px',
-                        padding      : '5px 12px',
-                        fontSize     : '0.75rem',
-                        fontWeight   : '500',
-                        color        : brandColor,
-                        cursor       : 'pointer',
-                        transition   : 'all 0.15s',
-                        fontFamily   : 'inherit',
-                      }}
-                      onMouseEnter={e => {
-                        (e.currentTarget as HTMLButtonElement).style.background = brandColor;
-                        (e.currentTarget as HTMLButtonElement).style.color = 'white';
-                      }}
-                      onMouseLeave={e => {
-                        (e.currentTarget as HTMLButtonElement).style.background = 'white';
-                        (e.currentTarget as HTMLButtonElement).style.color = brandColor;
-                      }}
-                    >
-                      {qr.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Typing dots */}
-            {isLoading && (
-              <div style={{ display: 'flex', justifyContent: 'flex-start', animation: 'kavFadeIn 0.2s ease' }}>
-                <div style={{
-                  backgroundColor: 'white', border: '1px solid #e2e8f0',
-                  borderRadius: '4px 16px 16px 16px', padding: '12px 16px',
-                  display: 'flex', alignItems: 'center', gap: '5px',
-                  boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
-                }}>
-                  {[0, 160, 320].map(delay => (
-                    <span key={delay} style={{
-                      width: '7px', height: '7px', borderRadius: '50%',
-                      backgroundColor: brandColor, opacity: 0.6,
-                      display: 'inline-block',
-                      animation: `kavBounce 1.2s ${delay}ms infinite`,
-                    }} />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Lead capture form */}
-            {showLeadForm && !leadSubmitted && (
-              <LeadCaptureForm
-                color={brandColor}
-                defaultQuery={lastUserQuery}
-                submitting={leadSubmitting}
-                error={leadError}
-                onSubmit={submitLead}
-                onDismiss={() => setShowLeadForm(false)}
-              />
-            )}
-
-            {/* Lead submitted confirmation chip */}
-            {leadSubmitted && (
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: '6px',
-                fontSize: '0.75rem', color: '#16a34a', padding: '4px 2px',
-              }}>
-                <CheckCircle2 size={14} /> Thanks — we've got your details!
-              </div>
-            )}
-
-            <div ref={messagesEndRef} />
-          </div>
-
-          {/* Input bar */}
-          <div style={{
-            padding        : '12px 14px',
-            backgroundColor: 'white',
-            borderTop      : '1px solid #f1f5f9',
-            display        : 'flex',
-            gap            : '8px',
-            flexShrink     : 0,
-          }}>
-            <input
-              ref={inputRef}
-              type="text"
-              value={inputValue}
-              onChange={e => setInputValue(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Type your message..."
-              disabled={isLoading}
-              aria-label="Type your message"
+            <button onClick={() => setIsOpen(false)} aria-label="Close chat"
               style={{
-                flex        : 1,
-                padding     : '10px 14px',
-                border      : '1.5px solid #e2e8f0',
-                borderRadius: '10px',
-                fontSize    : '0.875rem',
-                outline     : 'none',
-                fontFamily  : 'inherit',
-                transition  : 'border-color 0.2s, box-shadow 0.2s',
-                color       : '#1e293b',
-                background  : '#f8fafc',
+                background: 'rgba(255,255,255,0.15)', border: 'none', color: 'white',
+                cursor: 'pointer', width: '32px', height: '32px', borderRadius: '8px',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                transition: 'background 0.2s',
               }}
-              onFocus={e => {
-                e.currentTarget.style.borderColor = brandColor;
-                e.currentTarget.style.boxShadow   = `0 0 0 3px ${brandColor}20`;
-                e.currentTarget.style.background  = '#fff';
-              }}
-              onBlur={e => {
-                e.currentTarget.style.borderColor = '#e2e8f0';
-                e.currentTarget.style.boxShadow   = 'none';
-                e.currentTarget.style.background  = '#f8fafc';
-              }}
-            />
-            <button
-              onClick={() => sendMessage()}
-              disabled={!inputValue.trim() || isLoading}
-              aria-label="Send"
-              style={{
-                width          : '42px',
-                height         : '42px',
-                borderRadius   : '10px',
-                backgroundColor: !inputValue.trim() || isLoading ? '#cbd5e1' : brandColor,
-                color          : 'white',
-                border         : 'none',
-                cursor         : !inputValue.trim() || isLoading ? 'not-allowed' : 'pointer',
-                display        : 'flex',
-                alignItems     : 'center',
-                justifyContent : 'center',
-                flexShrink     : 0,
-                transition     : 'all 0.15s',
-                boxShadow      : !inputValue.trim() || isLoading ? 'none' : `0 2px 8px ${brandColor}44`,
-              }}
-              onMouseEnter={e => {
-                if (!inputValue.trim() || isLoading) return;
-                (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1.08)';
-              }}
-              onMouseLeave={e => {
-                (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)';
-              }}
-            >
-              {isLoading
-                ? <Loader2 size={17} style={{ animation: 'kavSpin 0.8s linear infinite' }} />
-                : <Send size={17} />
-              }
+              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.3)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.15)')}>
+              <X size={18} />
             </button>
           </div>
+
+          {/* ── Welcome screen ── */}
+          {step === 'welcome' ? (
+            <div style={{
+              flex: 1, display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center',
+              padding: '30px 20px', background: '#f8fafc', gap: '18px',
+              overflowY: 'auto',
+            }}>
+              {/* Logo / icon */}
+              <div style={{
+                width: '76px', height: '76px', borderRadius: '22px',
+                background: `linear-gradient(135deg, ${brandColor} 0%, ${brandColor}cc 100%)`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                boxShadow: `0 10px 28px ${brandColor}44`,
+                overflow: 'hidden',
+              }}>
+                {logoUrl
+                  ? <img src={logoUrl} alt={companyName} style={{ width: '70%', height: '70%', objectFit: 'contain' }} />
+                  : <MessageCircle size={36} color="white" />
+                }
+              </div>
+
+              <div style={{ textAlign: 'center' }}>
+                <h2 style={{
+                  fontSize: '1.25rem', fontWeight: 700, color: '#0f172a',
+                  margin: '0 0 6px',
+                }}>
+                  Welcome to {companyName}
+                </h2>
+                <p style={{ fontSize: '0.84rem', color: '#64748b', margin: 0, lineHeight: 1.55 }}>
+                  We are here to help you with your queries, quotes,
+                  and everything about our services.
+                </p>
+              </div>
+
+              {/* Feature list */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
+                {[
+                  { icon: <MessageSquare size={15} />, text: 'Instant answers to your questions' },
+                  { icon: <User size={15} />,          text: 'Personalised assistance from our team' },
+                  { icon: <Phone size={15} />,         text: 'Quick callback on your query' },
+                ].map((item, i) => (
+                  <div key={i} style={{
+                    display: 'flex', alignItems: 'center', gap: '10px',
+                    background: '#fff', borderRadius: '10px', padding: '10px 12px',
+                    border: '1px solid #e2e8f0',
+                    fontSize: '0.82rem', color: '#374151',
+                  }}>
+                    <span style={{ color: brandColor, flexShrink: 0 }}>{item.icon}</span>
+                    {item.text}
+                  </div>
+                ))}
+              </div>
+
+              <button
+                onClick={startChat}
+                style={{
+                  background: brandColor, color: '#fff', border: 'none',
+                  borderRadius: '12px', padding: '13px 28px',
+                  fontSize: '0.92rem', fontWeight: 600, cursor: 'pointer',
+                  width: '100%', display: 'flex', alignItems: 'center',
+                  justifyContent: 'center', gap: '8px',
+                  boxShadow: `0 6px 18px ${brandColor}55`,
+                  transition: 'transform .18s, box-shadow .18s',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.transform = 'translateY(-2px)')}
+                onMouseLeave={e => (e.currentTarget.style.transform = 'translateY(0)')}
+              >
+                Start Chat <Send size={16} />
+              </button>
+
+              <p style={{ fontSize: '0.68rem', color: '#94a3b8', margin: 0, textAlign: 'center' }}>
+                By continuing you agree to our Privacy Policy
+              </p>
+            </div>
+          ) : (
+            <>
+              {/* ── Messages ── */}
+              <div role="log" aria-live="polite" style={{
+                flex: 1, overflowY: 'auto', padding: '14px',
+                backgroundColor: '#f8fafc',
+                display: 'flex', flexDirection: 'column', gap: '10px',
+              }}>
+
+                {/* Step banner */}
+                {showProgress && (
+                  <div style={{
+                    background: `${brandColor}0f`,
+                    border: `1px dashed ${brandColor}40`,
+                    borderRadius: '10px', padding: '8px 12px',
+                    fontSize: '0.75rem', color: brandColor,
+                    display: 'flex', alignItems: 'center', gap: '7px', flexShrink: 0,
+                    fontWeight: 500,
+                  }}>
+                    {step === 'collect_name'  && <><User size={13} /> Step 1 of 4 — Your name</>}
+                    {step === 'collect_phone' && <><Phone size={13} /> Step 2 of 4 — Phone number</>}
+                    {step === 'collect_email' && <><Mail size={13} /> Step 3 of 4 — Email address</>}
+                    {step === 'collect_query' && <><MessageSquare size={13} /> Step 4 of 4 — Your query</>}
+                  </div>
+                )}
+
+                {messages.map(msg => (
+                  <div key={msg.id} style={{
+                    display: 'flex',
+                    justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
+                    animation: 'kavFadeIn 0.22s ease',
+                  }}>
+                    <div style={{
+                      maxWidth       : '80%',
+                      borderRadius   : msg.role === 'user' ? '16px 16px 4px 16px' : '4px 16px 16px 16px',
+                      padding        : '10px 14px',
+                      backgroundColor: msg.role === 'user' ? brandColor : 'white',
+                      color          : msg.role === 'user' ? 'white' : '#1e293b',
+                      border         : msg.role === 'assistant' ? '1px solid #e2e8f0' : 'none',
+                      boxShadow      : msg.role === 'assistant'
+                        ? '0 1px 4px rgba(0,0,0,0.06)'
+                        : `0 2px 8px ${brandColor}33`,
+                    }}>
+                      <div style={{ fontSize: '0.875rem', margin: 0, wordBreak: 'break-word' }}>
+                        <RenderMessage content={msg.content} />
+                      </div>
+                      <span style={{
+                        fontSize: '0.67rem', opacity: 0.55, marginTop: '5px',
+                        display: 'block', textAlign: msg.role === 'user' ? 'right' : 'left',
+                      }}>
+                        {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+
+                {/* Typing dots */}
+                {isLoading && (
+                  <div style={{ display: 'flex', justifyContent: 'flex-start', animation: 'kavFadeIn 0.2s ease' }}>
+                    <div style={{
+                      backgroundColor: 'white', border: '1px solid #e2e8f0',
+                      borderRadius: '4px 16px 16px 16px', padding: '12px 16px',
+                      display: 'flex', alignItems: 'center', gap: '5px',
+                      boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+                    }}>
+                      {[0, 160, 320].map(delay => (
+                        <span key={delay} style={{
+                          width: '7px', height: '7px', borderRadius: '50%',
+                          backgroundColor: brandColor, opacity: 0.6,
+                          display: 'inline-block',
+                          animation: `kavBounce 1.2s ${delay}ms infinite`,
+                        }} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Query suggestions — lead step 4 */}
+                {step === 'collect_query' && !isLoading && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', animation: 'kavFadeIn 0.3s ease' }}>
+                    {QUERY_SUGGESTIONS.map(q => (
+                      <button
+                        key={q}
+                        onClick={() => handleSubmitQuery(q)}
+                        style={{
+                          background   : 'white',
+                          border       : `1.5px solid ${brandColor}44`,
+                          borderRadius : '20px',
+                          padding      : '5px 12px',
+                          fontSize     : '0.75rem',
+                          fontWeight   : 500,
+                          color        : brandColor,
+                          cursor       : 'pointer',
+                          transition   : 'all 0.15s',
+                          fontFamily   : 'inherit',
+                        }}
+                        onMouseEnter={e => {
+                          e.currentTarget.style.background = brandColor;
+                          e.currentTarget.style.color = 'white';
+                        }}
+                        onMouseLeave={e => {
+                          e.currentTarget.style.background = 'white';
+                          e.currentTarget.style.color = brandColor;
+                        }}
+                      >
+                        {q}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Quick replies — free chat phase */}
+                {step === 'chat' && showQuickReply && !isLoading && (
+                  <div style={{ animation: 'kavFadeIn 0.3s ease' }}>
+                    <p style={{ fontSize: '0.72rem', color: '#94a3b8', margin: '4px 0 8px' }}>
+                      Quick questions:
+                    </p>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                      {QUICK_REPLIES.map(qr => (
+                        <button
+                          key={qr.msg}
+                          onClick={() => sendChatMessage(qr.msg)}
+                          style={{
+                            background   : 'white',
+                            border       : `1.5px solid ${brandColor}44`,
+                            borderRadius : '20px',
+                            padding      : '5px 12px',
+                            fontSize     : '0.75rem',
+                            fontWeight   : 500,
+                            color        : brandColor,
+                            cursor       : 'pointer',
+                            transition   : 'all 0.15s',
+                            fontFamily   : 'inherit',
+                          }}
+                          onMouseEnter={e => {
+                            e.currentTarget.style.background = brandColor;
+                            e.currentTarget.style.color = 'white';
+                          }}
+                          onMouseLeave={e => {
+                            e.currentTarget.style.background = 'white';
+                            e.currentTarget.style.color = brandColor;
+                          }}
+                        >
+                          {qr.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Saved details card */}
+                {step === 'chat' && userDetails.name && (
+                  <div style={{
+                    background: `${brandColor}0d`,
+                    border: `1px solid ${brandColor}26`,
+                    borderRadius: '14px', padding: '12px 14px',
+                    fontSize: '0.78rem', color: '#374151',
+                  }}>
+                    <div style={{
+                      fontWeight: 600, color: brandColor, marginBottom: '8px',
+                      fontSize: '0.68rem', textTransform: 'uppercase',
+                      letterSpacing: '0.06em',
+                    }}>
+                      Contact Details Confirmed
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <User size={12} style={{ color: brandColor, flexShrink: 0 }} /> {userDetails.name}
+                      </span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Phone size={12} style={{ color: brandColor, flexShrink: 0 }} /> {userDetails.phone}
+                      </span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Mail size={12} style={{ color: brandColor, flexShrink: 0 }} /> {userDetails.email}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                <div ref={messagesEndRef} />
+              </div>
+
+              {/* ── Input bar ── */}
+              <div style={{
+                padding        : '12px 14px',
+                backgroundColor: 'white',
+                borderTop      : '1px solid #f1f5f9',
+                display        : 'flex',
+                gap            : '8px',
+                flexShrink     : 0,
+              }}>
+                <input
+                  ref={inputRef}
+                  type={step === 'collect_email' ? 'email' : step === 'collect_phone' ? 'tel' : 'text'}
+                  value={inputValue}
+                  onChange={e => setInputValue(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder={getPlaceholder()}
+                  disabled={isLoading}
+                  maxLength={step === 'collect_phone' ? 10 : undefined}
+                  aria-label={getPlaceholder()}
+                  style={{
+                    flex        : 1,
+                    padding     : '10px 14px',
+                    border      : '1.5px solid #e2e8f0',
+                    borderRadius: '10px',
+                    fontSize    : '0.875rem',
+                    outline     : 'none',
+                    fontFamily  : 'inherit',
+                    transition  : 'border-color 0.2s, box-shadow 0.2s',
+                    color       : '#1e293b',
+                    background  : '#f8fafc',
+                    opacity     : isLoading ? 0.6 : 1,
+                  }}
+                  onFocus={e => {
+                    e.currentTarget.style.borderColor = brandColor;
+                    e.currentTarget.style.boxShadow   = `0 0 0 3px ${brandColor}20`;
+                    e.currentTarget.style.background  = '#fff';
+                  }}
+                  onBlur={e => {
+                    e.currentTarget.style.borderColor = '#e2e8f0';
+                    e.currentTarget.style.boxShadow   = 'none';
+                    e.currentTarget.style.background  = '#f8fafc';
+                  }}
+                />
+                <button
+                  onClick={handleSendMessage}
+                  disabled={!inputValue.trim() || isLoading}
+                  aria-label="Send"
+                  style={{
+                    width          : '42px',
+                    height         : '42px',
+                    borderRadius   : '10px',
+                    backgroundColor: !inputValue.trim() || isLoading ? '#cbd5e1' : brandColor,
+                    color          : 'white',
+                    border         : 'none',
+                    cursor         : !inputValue.trim() || isLoading ? 'not-allowed' : 'pointer',
+                    display        : 'flex',
+                    alignItems     : 'center',
+                    justifyContent : 'center',
+                    flexShrink     : 0,
+                    transition     : 'all 0.15s',
+                    boxShadow      : !inputValue.trim() || isLoading ? 'none' : `0 2px 8px ${brandColor}44`,
+                  }}
+                  onMouseEnter={e => {
+                    if (!inputValue.trim() || isLoading) return;
+                    e.currentTarget.style.transform = 'scale(1.08)';
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.transform = 'scale(1)';
+                  }}
+                >
+                  {isLoading
+                    ? <Loader2 size={17} style={{ animation: 'kavSpin 0.8s linear infinite' }} />
+                    : <Send size={17} />
+                  }
+                </button>
+              </div>
+            </>
+          )}
 
           {/* Footer */}
           <div style={{
             textAlign: 'center', fontSize: '0.66rem', color: '#94a3b8',
             padding: '5px 0 8px', backgroundColor: 'white', flexShrink: 0,
+            borderTop: '1px solid #f3f4f6',
           }}>
-            Powered by {companyName} · Smart Assistant
+            Powered by <strong style={{ color: brandColor }}>{companyName}</strong> · Your data is secure
           </div>
 
         </div>
       )}
 
-      {/* Animations */}
+      {/* Animations + mobile fullscreen */}
       <style>{`
         @keyframes kavSlideIn {
           from { opacity: 0; transform: translateY(calc(-50% + 24px)) scale(0.96); }
@@ -889,6 +1002,20 @@ export default function ChatbotWidget({
         @keyframes kavPulse {
           0%, 100% { opacity: 1; }
           50%      { opacity: 0.5; }
+        }
+
+        /* ── Responsive: phones & tablets → fullscreen chat ── */
+        @media (max-width: 899px) {
+          .kav-window {
+            top: 0 !important; left: 0 !important;
+            right: 0 !important; bottom: 0 !important;
+            width: 100vw !important; max-width: 100vw !important;
+            height: 100dvh !important; max-height: 100dvh !important;
+            border-radius: 0 !important;
+            transform: none !important;
+            animation: kavFadeIn 0.25s ease !important;
+          }
+          .kav-window input { font-size: 16px !important; }
         }
       `}</style>
     </div>
