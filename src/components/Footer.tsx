@@ -53,7 +53,7 @@ const Footer = () => {
                 </Link>
               </div>
               <div className="col-md-5 d-flex justify-content-md-center">
-                <p>Welcome to Kavalakat where innovation meet our passion in a journey that started dream.</p>
+                <p>Welcome to Kavalakat, where innovation meets craftsmanship, delivering trusted steel solutions built to last.</p>
               </div>
               <div className="col-md-4 d-flex justify-content-md-end" />
             </div>

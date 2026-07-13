@@ -88,6 +88,11 @@ function buildEmbedUrlFree(address: string, city: string, state: string, pincode
   return `https://maps.google.com/maps?q=${encodeURIComponent(query)}&t=m&z=15&output=embed&iwloc=near`
 }
 
+// Builds an embed URL from a single free-text address (used for branches)
+function buildEmbedUrlFromAddress(address: string): string {
+  return `https://maps.google.com/maps?q=${encodeURIComponent(address)}&t=m&z=15&output=embed&iwloc=near`
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 const ContactPage = () => {
@@ -100,6 +105,9 @@ const ContactPage = () => {
   const [locations,       setLocations]       = useState<ContactLocation[]>([])
   const [locationsLoading, setLocationsLoading] = useState(true)
   const [locationsError,  setLocationsError]  = useState(false)
+
+  // ── Selected branch shown on the map (null = head office / main contact) ──
+  const [selectedBranchId, setSelectedBranchId] = useState<number | null>(null)
 
   // ── Fetch contact info ────────────────────────────────────────────────────
   useEffect(() => {
@@ -180,7 +188,7 @@ const ContactPage = () => {
 
   // Build embed URL from address — uses free maps.google.com/maps?q= endpoint
   // No API key needed; renders a real map with a red pin on the location
-  const mapEmbedUrl = contactInfo
+  const headOfficeEmbedUrl = contactInfo
     ? buildEmbedUrlFree(
         contactInfo.address  ?? '',
         contactInfo.city     ?? '',
@@ -188,8 +196,21 @@ const ContactPage = () => {
         contactInfo.pincode  ?? '',
       )
     : null
-  // "Open in Maps" uses the CMS short link if present, else falls back to embed URL
-  const mapOpenUrl = contactInfo?.map_embed_url?.trim() || mapEmbedUrl || 'https://maps.google.com'
+
+  // ── Which branch is currently selected? ────────────────────────────────────
+  const selectedBranch = selectedBranchId !== null
+    ? locations.find(l => l.id === selectedBranchId) ?? null
+    : null
+
+  // The iframe shows the selected branch, else the head office
+  const mapEmbedUrl = selectedBranch
+    ? buildEmbedUrlFromAddress(selectedBranch.address)
+    : headOfficeEmbedUrl
+
+  // "Open in Maps" uses the branch's CMS link / head-office link, else embed URL
+  const mapOpenUrl = selectedBranch
+    ? (selectedBranch.google_map_link?.trim() || buildEmbedUrlFromAddress(selectedBranch.address))
+    : (contactInfo?.map_embed_url?.trim() || mapEmbedUrl || 'https://maps.google.com')
 
   return (
     <>
@@ -280,6 +301,34 @@ const ContactPage = () => {
         }
         .map-open-overlay:hover {
           background: #1a1a1a;
+          color: #fff;
+        }
+
+        /* ── Branch selector tabs above the map ── */
+        .map-branch-tabs {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 10px;
+          margin-bottom: 20px;
+        }
+        .map-branch-tab {
+          border: 1px solid #d5d5d5;
+          background: #fff;
+          color: #1a1a1a;
+          font-size: 0.82rem;
+          font-weight: 700;
+          letter-spacing: 0.04em;
+          padding: 10px 20px;
+          cursor: pointer;
+          transition: background 0.2s, color 0.2s, border-color 0.2s;
+          text-transform: uppercase;
+        }
+        .map-branch-tab:hover {
+          border-color: #1a1a1a;
+        }
+        .map-branch-tab.active {
+          background: #1a1a1a;
+          border-color: #1a1a1a;
           color: #fff;
         }
 
@@ -408,8 +457,8 @@ const ContactPage = () => {
                         <div className="content">
                           <span>Our Location</span>
                           <h6>
-                            <a
-                              href={contactInfo?.map_embed_url ?? 'https://www.google.com/maps'}
+                            
+                            <a  href={contactInfo?.map_embed_url ?? 'https://www.google.com/maps'}
                               target="_blank"
                               rel="noopener noreferrer"
                             >
@@ -561,8 +610,8 @@ const ContactPage = () => {
         {locations.map((loc) => (
           <li className="single-address" key={loc.id}>
             <span>{loc.branch_name?.toUpperCase()}</span>
-            <a
-              href={loc.google_map_link?.trim() || 'https://www.google.com/maps'}
+            
+            <a  href={loc.google_map_link?.trim() || 'https://www.google.com/maps'}
               target="_blank"
               rel="noopener noreferrer"
             >
@@ -576,23 +625,49 @@ const ContactPage = () => {
   </div>
 </div>
 
-      {/* ── Map section ── */}
+      {/* ── Map section — shows head office + every branch location ── */}
       {mapEmbedUrl && (
         <div className="contact-map-section mb-120" id="map">
           <div className="container">
 
+            {/* Branch selector tabs — click a branch to see it on the map */}
+            {locations.length > 0 && (
+              <div className="map-branch-tabs">
+                {contactInfo && (
+                  <button
+                    type="button"
+                    className={`map-branch-tab ${selectedBranchId === null ? 'active' : ''}`}
+                    onClick={() => setSelectedBranchId(null)}
+                  >
+                    Head Office
+                  </button>
+                )}
+                {locations.map((loc) => (
+                  <button
+                    type="button"
+                    key={loc.id}
+                    className={`map-branch-tab ${selectedBranchId === loc.id ? 'active' : ''}`}
+                    onClick={() => setSelectedBranchId(loc.id)}
+                  >
+                    {loc.branch_name}
+                  </button>
+                ))}
+              </div>
+            )}
+
             {/* Interactive embed — built from address, always works without API key */}
             <div className="map-iframe-wrap">
               <iframe
+                key={mapEmbedUrl}
                 src={mapEmbedUrl}
                 allowFullScreen
                 loading="lazy"
                 referrerPolicy="no-referrer-when-downgrade"
-                title="Our Location"
+                title={selectedBranch ? `${selectedBranch.branch_name} Location` : 'Our Location'}
               />
               {/* "Open in Maps" overlay button — uses the CMS link or fallback */}
-              <a
-                href={mapOpenUrl}
+              
+              <a  href={mapOpenUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="map-open-overlay"
