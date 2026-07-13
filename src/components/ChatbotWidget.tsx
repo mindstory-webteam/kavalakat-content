@@ -206,9 +206,9 @@ export default function ChatbotWidget({
   brandName      = 'AI Assistant',
   companyName    = 'Kavalakat',
   phoneNumber    = '0487 244 0380',
-  email          = 'contact@kavalakat.com',
+  email          = 'info@kavalakat.com',
   whatsappNumber = '916238000000',
-  brochureUrl    = '/kavalakat-brochure.pdf',
+  brochureUrl = '/Kavalakat-Brochure.pdf',
   brochureLabel  = 'Download Brochure',
 }: ChatbotWidgetProps) {
 
