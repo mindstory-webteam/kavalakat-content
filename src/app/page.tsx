@@ -40,7 +40,7 @@ export default function Home() {
   companyName="Kavalakat"
   whatsappNumber="916238000000"
   phoneNumber="0487 244 0380"
-  email="contact@kavalakat.com"
+  email="info@kavalakat.com"
 />
     </>
   );
