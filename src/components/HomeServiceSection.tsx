@@ -41,14 +41,6 @@ function unwrapEnvelope(json: any): any {
   return json;
 }
 
-function toSlug(s: string): string {
-  return (s || "")
-    .toLowerCase()
-    .replace(/&/g, "and")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
-}
-
 const FALLBACK_IMG = "/assets/new-images/new-images/about-imges/img-1.webp";
 
 // Resolve image URL — handles relative paths, all common field names
@@ -116,24 +108,21 @@ const HomeServiceSection: React.FC = () => {
     return () => handlers.forEach(({ el, fn }) => el.removeEventListener("mousemove", fn));
   }, [items]);
 
-  // ── Fetch ────────────────────────────────────────────────────────────────────
+  // ── Fetch (TRADING items only) ──────────────────────────────────────────────
   useEffect(() => {
     const load = async () => {
       setLoading(true);
       try {
-        const trading:      ServiceItem[] = [];
-        const distribution: ServiceItem[] = [];
-        const services:     ServiceItem[] = [];
+        const trading: ServiceItem[] = [];
 
-        // ── 1. Portfolio items (trading + distribution) ──────────────────────
+        // ── 1. Portfolio page endpoint ────────────────────────────────────────
         let portfolioLoaded = false;
         try {
           const res = await fetch(`${API}/portfolio/page/`);
           if (res.ok) {
             const json = await res.json();
             const page = unwrapEnvelope(json);
-            const hasData = page?.trading?.length || page?.distribution?.length;
-            if (hasData) {
+            if (page?.trading?.length) {
               (page.trading ?? []).forEach((raw: any) => {
                 const n = normalisePortfolioItem(raw);
                 trading.push({
@@ -146,24 +135,12 @@ const HomeServiceSection: React.FC = () => {
                   categoryName: (n as any).categoryName || raw.category_name || "Trading",
                 });
               });
-              (page.distribution ?? []).forEach((raw: any) => {
-                const n = normalisePortfolioItem(raw);
-                distribution.push({
-                  uid:          `distribution-${n.id}`,
-                  id:           n.id,
-                  name:         n.name,
-                  href:         buildPortfolioHref(n),
-                  imageUrl:     resolveImage(raw),
-                  description:  (n as any).description || raw.description || "",
-                  categoryName: (n as any).categoryName || raw.category_name || "Distribution",
-                });
-              });
               portfolioLoaded = true;
             }
           }
         } catch { /* fall through */ }
 
-        // Fallback: flat items list
+        // ── 2. Fallback: flat items list, keep only TRADING category ─────────
         if (!portfolioLoaded) {
           try {
             const res = await fetch(`${API}/portfolio/items/`);
@@ -175,57 +152,35 @@ const HomeServiceSection: React.FC = () => {
                 : data.results ?? data.items ?? [];
               allItems
                 .filter((i: any) => i.is_active !== false)
+                .filter((i: any) => {
+                  const cat = (
+                    i.category_name ||
+                    i.category_detail?.name ||
+                    i.category ||
+                    ""
+                  )
+                    .toString()
+                    .toLowerCase();
+                  return cat.includes("trading");
+                })
                 .sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0))
                 .forEach((raw: any) => {
-                  const n    = normalisePortfolioItem(raw as PortfolioItem);
-                  const href = buildPortfolioHref(n);
-                  const base = {
+                  const n = normalisePortfolioItem(raw as PortfolioItem);
+                  trading.push({
+                    uid:          `trading-${n.id}`,
                     id:           n.id,
                     name:         n.name,
-                    href,
+                    href:         buildPortfolioHref(n),
                     imageUrl:     resolveImage(raw),
                     description:  (n as any).description || raw.description || "",
-                    categoryName: (n as any).categoryName || raw.category_name || "",
-                  };
-                  if (href.startsWith("/product/"))
-                    trading.push({ uid: `trading-${n.id}`, ...base });
-                  else if (href.startsWith("/distribution/"))
-                    distribution.push({ uid: `distribution-${n.id}`, ...base });
+                    categoryName: (n as any).categoryName || raw.category_name || "Trading",
+                  });
                 });
             }
           } catch { /* silently ignore */ }
         }
 
-        // ── 2. Services (authoritative) ──────────────────────────────────────
-        try {
-          let url: string | null = `${API}/services/?is_active=true`;
-          while (url) {
-            const res: Response = await fetch(url, { cache: "no-store" });
-            if (!res.ok) break;
-            const json = await res.json();
-            const rows: any[] = Array.isArray(json?.results)
-              ? json.results
-              : Array.isArray(json?.data)
-                ? json.data
-                : Array.isArray(json) ? json : [];
-            rows.forEach((svc: any) => {
-              if (svc.is_active === false) return;
-              const slug = svc.slug || toSlug(svc.name);
-              services.push({
-                uid:          `services-${svc.id}`,
-                id:           svc.id,
-                name:         svc.name,
-                href:         `/services/${slug}`,
-                imageUrl:     resolveImage(svc),
-                description:  svc.description || "",
-                categoryName: svc.category_detail?.name || "Services",
-              });
-            });
-            url = json?.next ?? null;
-          }
-        } catch { /* silently ignore */ }
-
-        setItems([...trading, ...distribution, ...services]);
+        setItems(trading);
       } catch {
         // silently ignore
       } finally {
@@ -269,7 +224,7 @@ const HomeServiceSection: React.FC = () => {
             </div>
           </div>
           <ul className="sevices-wrap">
-            {Array.from({ length: 6 }).map((_, i) => (
+            {Array.from({ length: 5 }).map((_, i) => (
               <li key={`skel-${i}`} className="single-services" style={{ opacity: 0.35 }}>
                 <div className="number-and-icon-area">
                   <span style={{ background: "#333", borderRadius: 4, display: "block", width: 28, height: 22 }} />
@@ -302,8 +257,8 @@ const HomeServiceSection: React.FC = () => {
           </div>
           <div className="col-lg-3 d-flex justify-content-lg-end btn_wrapper">
             <Link className="primary-btn3 white-bg" href="/product">
-              <span>View All Services</span>
-              <span>View All Services</span>
+              <span>View All Products</span>
+              <span>View All Products</span>
               <svg
                 className="arrow"
                 width={23}
