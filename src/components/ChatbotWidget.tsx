@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, X, MessageCircle, Loader2, Phone, Mail, Download } from 'lucide-react';
+import { Send, X, MessageCircle, Loader2, Phone, Mail, Download, User, CheckCircle2, AlertCircle } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -14,6 +14,7 @@ interface Message {
 
 interface ChatbotWidgetProps {
   apiEndpoint    ?: string;
+  leadsEndpoint  ?: string;
   brandColor     ?: string;
   brandName      ?: string;
   companyName    ?: string;
@@ -33,6 +34,7 @@ const QUICK_REPLIES = [
   { label: '📞 Contact',        msg: 'How can I contact you?' },
   { label: '💼 Careers',        msg: 'Are you hiring?' },
   { label: '🏢 About Us',       msg: 'Tell me about Kavalakat' },
+  { label: '📝 Get a Quote',    msg: 'I would like to get a quote' },
 ];
 
 // ─── Session key ──────────────────────────────────────────────────────────────
@@ -76,10 +78,130 @@ function RenderMessage({ content, color }: { content: string; color: string }) {
   );
 }
 
+// ─── Lead capture form (inline bubble) ─────────────────────────────────────────
+
+interface LeadFormProps {
+  color        : string;
+  defaultQuery : string;
+  submitting   : boolean;
+  error        : string;
+  onSubmit     : (name: string, phone: string, email: string, query: string) => void;
+  onDismiss    : () => void;
+}
+
+function LeadCaptureForm({ color, defaultQuery, submitting, error, onSubmit, onDismiss }: LeadFormProps) {
+  const [name,  setName]  = useState('');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [query, setQuery] = useState(defaultQuery);
+
+  const inputStyle: React.CSSProperties = {
+    width       : '100%',
+    padding     : '9px 12px',
+    border      : '1.5px solid #e2e8f0',
+    borderRadius: '8px',
+    fontSize    : '0.83rem',
+    outline     : 'none',
+    fontFamily  : 'inherit',
+    color       : '#1e293b',
+    marginBottom: '8px',
+    boxSizing   : 'border-box',
+  };
+
+  const canSubmit = name.trim().length > 0 && (phone.trim().length > 0 || email.trim().length > 0);
+
+  return (
+    <div style={{
+      background   : 'white',
+      border       : '1.5px solid #e2e8f0',
+      borderRadius : '14px',
+      padding      : '14px',
+      boxShadow    : '0 2px 10px rgba(0,0,0,0.06)',
+      animation    : 'kavFadeIn 0.25s ease',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+        <div style={{
+          width: '28px', height: '28px', borderRadius: '50%',
+          backgroundColor: `${color}1a`, color,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+        }}>
+          <User size={15} />
+        </div>
+        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#1e293b' }}>
+          Leave your details — we'll get back to you!
+        </div>
+      </div>
+
+      <input
+        type="text" placeholder="Your name *" value={name}
+        onChange={e => setName(e.target.value)} style={inputStyle}
+        onFocus={e => (e.currentTarget.style.borderColor = color)}
+        onBlur={e => (e.currentTarget.style.borderColor = '#e2e8f0')}
+      />
+      <input
+        type="tel" placeholder="Phone number" value={phone}
+        onChange={e => setPhone(e.target.value)} style={inputStyle}
+        onFocus={e => (e.currentTarget.style.borderColor = color)}
+        onBlur={e => (e.currentTarget.style.borderColor = '#e2e8f0')}
+      />
+      <input
+        type="email" placeholder="Email address" value={email}
+        onChange={e => setEmail(e.target.value)} style={inputStyle}
+        onFocus={e => (e.currentTarget.style.borderColor = color)}
+        onBlur={e => (e.currentTarget.style.borderColor = '#e2e8f0')}
+      />
+      <textarea
+        placeholder="What are you looking for?" value={query}
+        onChange={e => setQuery(e.target.value)}
+        rows={2}
+        style={{ ...inputStyle, resize: 'none', marginBottom: '4px' }}
+        onFocus={e => (e.currentTarget.style.borderColor = color)}
+        onBlur={e => (e.currentTarget.style.borderColor = '#e2e8f0')}
+      />
+
+      <p style={{ fontSize: '0.68rem', color: '#94a3b8', margin: '2px 0 10px' }}>
+        Please share a phone number or an email so we can reach you.
+      </p>
+
+      {error && (
+        <p style={{ fontSize: '0.72rem', color: '#ef4444', margin: '0 0 8px' }}>{error}</p>
+      )}
+
+      <div style={{ display: 'flex', gap: '8px' }}>
+        <button
+          type="button"
+          disabled={!canSubmit || submitting}
+          onClick={() => onSubmit(name.trim(), phone.trim(), email.trim(), query.trim())}
+          style={{
+            flex: 1, padding: '9px', borderRadius: '8px', border: 'none',
+            backgroundColor: !canSubmit || submitting ? '#cbd5e1' : color,
+            color: 'white', fontSize: '0.82rem', fontWeight: 700,
+            cursor: !canSubmit || submitting ? 'not-allowed' : 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+          }}
+        >
+          {submitting ? <Loader2 size={14} style={{ animation: 'kavSpin 0.8s linear infinite' }} /> : 'Submit'}
+        </button>
+        <button
+          type="button" onClick={onDismiss}
+          style={{
+            padding: '9px 14px', borderRadius: '8px', border: '1.5px solid #e2e8f0',
+            backgroundColor: 'white', color: '#64748b', fontSize: '0.82rem',
+            fontWeight: 600, cursor: 'pointer',
+          }}
+        >
+          Not now
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function ChatbotWidget({
   apiEndpoint    = 'https://api.kavalakat.com/api/chat/',
+  leadsEndpoint,
   brandColor     = '#0077be',
   brandName      = 'AI Assistant',
   companyName    = 'Kavalakat',
@@ -104,12 +226,26 @@ export default function ChatbotWidget({
     },
   ]);
 
+  // ── Lead capture state ──────────────────────────────────────────────────────
+  const [showLeadForm,   setShowLeadForm]   = useState(false);
+  const [leadSubmitted,  setLeadSubmitted]  = useState(false);
+  const [leadSubmitting, setLeadSubmitting] = useState(false);
+  const [leadError,      setLeadError]      = useState('');
+  const [lastUserQuery,  setLastUserQuery]  = useState('');
+  const leadPromptedRef = useRef(false); // only auto-prompt once per session
+
+  const resolvedLeadsEndpoint = leadsEndpoint ?? `${apiEndpoint.replace(/\/?$/, '/')}leads/`;
+
+  // ── Brochure download state ──────────────────────────────────────────────
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState(false);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef       = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, showLeadForm]);
 
   useEffect(() => {
     if (isOpen) setTimeout(() => inputRef.current?.focus(), 300);
@@ -129,14 +265,97 @@ export default function ChatbotWidget({
     window.open(`https://wa.me/${whatsappNumber}`, '_blank');
   }, [whatsappNumber]);
 
-  const handleBrochure = useCallback(() => {
-    const a    = document.createElement('a');
-    a.href     = brochureUrl;
-    a.download = 'Kavalakat-Brochure.pdf';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  }, [brochureUrl]);
+  // ── Brochure download (blob-based, with fallback) ───────────────────────
+  //
+  // Why not just `a.href = brochureUrl; a.click()`?
+  // The `download` attribute only forces a save when the file is same-origin
+  // AND the server doesn't send `Content-Disposition: inline`. On many live
+  // setups (CDN, S3, subdomain, misconfigured static host) the browser just
+  // opens/previews the PDF instead of downloading it. Fetching the file as a
+  // blob and creating an object URL sidesteps all of that — as long as the
+  // file is reachable and (if cross-origin) CORS-enabled.
+
+  const handleBrochure = useCallback(async () => {
+    if (isDownloading) return;
+    setDownloadError(false);
+    setIsDownloading(true);
+
+    try {
+      const res = await fetch(brochureUrl);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = 'Kavalakat-Brochure.pdf';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+
+      // Free memory once the browser has had a chance to start the download
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+    } catch (err) {
+      console.error('Brochure download failed:', err);
+      setDownloadError(true);
+
+      // Fallback: open in a new tab so the user can at least view/save it
+      // manually (e.g. Ctrl/Cmd+S), even if CORS or headers blocked the blob fetch.
+      window.open(brochureUrl, '_blank', 'noopener,noreferrer');
+
+      // Clear the error indicator after a few seconds
+      setTimeout(() => setDownloadError(false), 4000);
+    } finally {
+      setIsDownloading(false);
+    }
+  }, [brochureUrl, isDownloading]);
+
+  // ── Lead submit ───────────────────────────────────────────────────────────
+
+  const submitLead = useCallback(async (name: string, phone: string, formEmail: string, query: string) => {
+    setLeadSubmitting(true);
+    setLeadError('');
+    try {
+      const res = await fetch(resolvedLeadsEndpoint, {
+        method : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body   : JSON.stringify({
+          session_key: sessionKey,
+          name,
+          phone,
+          email: formEmail,
+          query: query || lastUserQuery || 'General enquiry from chatbot',
+        }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        const firstError =
+          (data && (data.non_field_errors?.[0] || data.name?.[0] || data.email?.[0] || data.phone?.[0])) ||
+          'Please check your details and try again.';
+        setLeadError(firstError);
+        return;
+      }
+
+      setLeadSubmitted(true);
+      setShowLeadForm(false);
+      setMessages(prev => [
+        ...prev,
+        {
+          id       : (Date.now() + 2).toString(),
+          role     : 'assistant',
+          content  : data.message || "Thanks! We've received your details and our team will reach out shortly. 🙌",
+          timestamp: new Date(),
+        },
+      ]);
+    } catch (err) {
+      console.error('Lead submit error:', err);
+      setLeadError('Something went wrong. Please try again or call us directly.');
+    } finally {
+      setLeadSubmitting(false);
+    }
+  }, [resolvedLeadsEndpoint, sessionKey, lastUserQuery]);
 
   // ── Core send ─────────────────────────────────────────────────────────────
 
@@ -146,6 +365,7 @@ export default function ChatbotWidget({
 
     // Hide quick replies after first message
     setShowQuickReply(false);
+    setLastUserQuery(text);
 
     const userMsg: Message = {
       id       : Date.now().toString(),
@@ -179,6 +399,12 @@ export default function ChatbotWidget({
           timestamp: new Date(),
         },
       ]);
+
+      // Show the lead-capture form once, when the backend signals buying intent
+      if (data.capture_lead && !leadSubmitted && !leadPromptedRef.current) {
+        leadPromptedRef.current = true;
+        setShowLeadForm(true);
+      }
     } catch (err) {
       console.error('Chat error:', err);
       setMessages(prev => [
@@ -193,7 +419,7 @@ export default function ChatbotWidget({
     } finally {
       setIsLoading(false);
     }
-  }, [inputValue, isLoading, apiEndpoint, sessionKey, phoneNumber]);
+  }, [inputValue, isLoading, apiEndpoint, sessionKey, phoneNumber, leadSubmitted]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -273,11 +499,25 @@ export default function ChatbotWidget({
 
         {/* Brochure */}
         <button onClick={handleBrochure}
-          style={{ ...sideBtn, backgroundColor: '#e67e22' }}
+          disabled={isDownloading}
+          style={{
+            ...sideBtn,
+            backgroundColor: downloadError ? '#dc2626' : '#e67e22',
+            cursor: isDownloading ? 'wait' : 'pointer',
+          }}
           onMouseEnter={expandBtn} onMouseLeave={collapseBtn}
-          aria-label={brochureLabel} title={brochureLabel}>
-          <Download size={20} style={{ flexShrink: 0 }} />
-          <span className="btn-label" style={labelStyle}>{brochureLabel}</span>
+          aria-label={downloadError ? 'Download failed — opening in new tab instead' : brochureLabel}
+          title={downloadError ? 'Download failed — opened in a new tab instead' : brochureLabel}>
+          {isDownloading ? (
+            <Loader2 size={20} style={{ flexShrink: 0, animation: 'kavSpin 0.8s linear infinite' }} />
+          ) : downloadError ? (
+            <AlertCircle size={20} style={{ flexShrink: 0 }} />
+          ) : (
+            <Download size={20} style={{ flexShrink: 0 }} />
+          )}
+          <span className="btn-label" style={labelStyle}>
+            {isDownloading ? 'Downloading…' : downloadError ? 'Opened in new tab' : brochureLabel}
+          </span>
         </button>
 
         {/* WhatsApp */}
@@ -392,17 +632,33 @@ export default function ChatbotWidget({
                 </p>
               </div>
             </div>
-            <button onClick={() => setIsOpen(false)} aria-label="Close chat"
-              style={{
-                background: 'rgba(255,255,255,0.15)', border: 'none', color: 'white',
-                cursor: 'pointer', width: '32px', height: '32px', borderRadius: '8px',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                transition: 'background 0.2s',
-              }}
-              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.3)')}
-              onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.15)')}>
-              <X size={18} />
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              {!leadSubmitted && (
+                <button
+                  onClick={() => { setLeadError(''); setShowLeadForm(true); }}
+                  title="Request a callback"
+                  style={{
+                    background: 'rgba(255,255,255,0.15)', border: 'none', color: 'white',
+                    cursor: 'pointer', height: '32px', borderRadius: '8px', padding: '0 10px',
+                    display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.72rem', fontWeight: 600,
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.3)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.15)')}>
+                  <User size={14} /> Callback
+                </button>
+              )}
+              <button onClick={() => setIsOpen(false)} aria-label="Close chat"
+                style={{
+                  background: 'rgba(255,255,255,0.15)', border: 'none', color: 'white',
+                  cursor: 'pointer', width: '32px', height: '32px', borderRadius: '8px',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  transition: 'background 0.2s',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.3)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.15)')}>
+                <X size={18} />
+              </button>
+            </div>
           </div>
 
           {/* Messages */}
@@ -498,6 +754,28 @@ export default function ChatbotWidget({
                     }} />
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* Lead capture form */}
+            {showLeadForm && !leadSubmitted && (
+              <LeadCaptureForm
+                color={brandColor}
+                defaultQuery={lastUserQuery}
+                submitting={leadSubmitting}
+                error={leadError}
+                onSubmit={submitLead}
+                onDismiss={() => setShowLeadForm(false)}
+              />
+            )}
+
+            {/* Lead submitted confirmation chip */}
+            {leadSubmitted && (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: '6px',
+                fontSize: '0.75rem', color: '#16a34a', padding: '4px 2px',
+              }}>
+                <CheckCircle2 size={14} /> Thanks — we've got your details!
               </div>
             )}
 
