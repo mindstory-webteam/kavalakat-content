@@ -44,16 +44,6 @@ interface ChatbotWidgetProps {
   logoUrl        ?: string;
 }
 
-// ─── Quick reply suggestions (shown in free-chat phase) ──────────────────────
-
-const QUICK_REPLIES = [
-  { label: '📋 Our Services', msg: 'What services do you offer?' },
-  { label: '🏗️ Portfolio',    msg: 'Show me your portfolio' },
-  { label: '📍 Location',     msg: 'Where are you located?' },
-  { label: '📞 Contact',      msg: 'How can I contact you?' },
-  { label: '💼 Careers',      msg: 'Are you hiring?' },
-];
-
 // Query suggestions (shown at lead step 4)
 const QUERY_SUGGESTIONS = [
   'I need a project quote',
@@ -122,14 +112,13 @@ export default function ChatbotWidget({
 
   const API_BASE = apiBase.replace(/\/$/, '');
 
-  const [isOpen,         setIsOpen]         = useState(false);
-  const [step,           setStep]           = useState<ChatStep>('welcome');
-  const [inputValue,     setInputValue]     = useState('');
-  const [isLoading,      setIsLoading]      = useState(false);
-  const [showQuickReply, setShowQuickReply] = useState(true);
-  const [sessionKey]                        = useState<string>(getSessionKey);
-  const [messages,       setMessages]       = useState<Message[]>([]);
-  const [userDetails,    setUserDetails]    = useState<UserDetails>({
+  const [isOpen,      setIsOpen]      = useState(false);
+  const [step,        setStep]        = useState<ChatStep>('welcome');
+  const [inputValue,  setInputValue]  = useState('');
+  const [isLoading,   setIsLoading]   = useState(false);
+  const [sessionKey]                  = useState<string>(getSessionKey);
+  const [messages,    setMessages]    = useState<Message[]>([]);
+  const [userDetails, setUserDetails] = useState<UserDetails>({
     name: '', phone: '', email: '', query: '',
   });
 
@@ -342,7 +331,6 @@ export default function ChatbotWidget({
       pushAssistantMsg(
         `Thank you, **${payload.name}**! ✅\n\nWe have noted your query: "${query}"\n\nOur team will reach out to you at **${payload.phone}** shortly. Meanwhile, feel free to ask me anything about ${companyName}!`
       );
-      setShowQuickReply(true);
     }, 600);
   };
 
@@ -352,7 +340,6 @@ export default function ChatbotWidget({
     const text = (overrideText ?? inputValue).trim();
     if (!text || isLoading) return;
 
-    setShowQuickReply(false);
     pushUserMsg(text);
     if (!overrideText) setInputValue('');
     setIsLoading(true);
@@ -816,45 +803,6 @@ export default function ChatbotWidget({
                         {q}
                       </button>
                     ))}
-                  </div>
-                )}
-
-                {/* Quick replies — free chat phase */}
-                {step === 'chat' && showQuickReply && !isLoading && (
-                  <div style={{ animation: 'kavFadeIn 0.3s ease' }}>
-                    <p style={{ fontSize: '0.72rem', color: '#94a3b8', margin: '4px 0 8px' }}>
-                      Quick questions:
-                    </p>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                      {QUICK_REPLIES.map(qr => (
-                        <button
-                          key={qr.msg}
-                          onClick={() => sendChatMessage(qr.msg)}
-                          style={{
-                            background   : 'white',
-                            border       : `1.5px solid ${brandColor}44`,
-                            borderRadius : '20px',
-                            padding      : '5px 12px',
-                            fontSize     : '0.75rem',
-                            fontWeight   : 500,
-                            color        : brandColor,
-                            cursor       : 'pointer',
-                            transition   : 'all 0.15s',
-                            fontFamily   : 'inherit',
-                          }}
-                          onMouseEnter={e => {
-                            e.currentTarget.style.background = brandColor;
-                            e.currentTarget.style.color = 'white';
-                          }}
-                          onMouseLeave={e => {
-                            e.currentTarget.style.background = 'white';
-                            e.currentTarget.style.color = brandColor;
-                          }}
-                        >
-                          {qr.label}
-                        </button>
-                      ))}
-                    </div>
                   </div>
                 )}
 
