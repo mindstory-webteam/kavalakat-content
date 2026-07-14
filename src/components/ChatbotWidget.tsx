@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   Send, X, MessageCircle, Loader2, Phone, Mail, Download,
-  User, MessageSquare, AlertCircle,
+  User, MessageSquare,
 } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -122,10 +122,6 @@ export default function ChatbotWidget({
     name: '', phone: '', email: '', query: '',
   });
 
-  // ── Brochure download state ───────────────────────────────────────────────
-  const [isDownloading, setIsDownloading] = useState(false);
-  const [downloadError, setDownloadError] = useState(false);
-
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef       = useRef<HTMLInputElement>(null);
 
@@ -165,51 +161,14 @@ export default function ChatbotWidget({
     window.open(`https://wa.me/${whatsappNumber}`, '_blank');
   }, [whatsappNumber]);
 
-  // ── Brochure download (blob-based, with fallback) ───────────────────────
-  //
-  // Why not just `a.href = brochureUrl; a.click()`?
-  // The `download` attribute only forces a save when the file is same-origin
-  // AND the server doesn't send `Content-Disposition: inline`. On many live
-  // setups (CDN, S3, subdomain, misconfigured static host) the browser just
-  // opens/previews the PDF instead of downloading it. Fetching the file as a
-  // blob and creating an object URL sidesteps all of that — as long as the
-  // file is reachable and (if cross-origin) CORS-enabled.
-
-  const handleBrochure = useCallback(async () => {
-    if (isDownloading) return;
-    setDownloadError(false);
-    setIsDownloading(true);
-
-    try {
-      const res = await fetch(brochureUrl);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-      const blob    = await res.blob();
-      const blobUrl = URL.createObjectURL(blob);
-
-      const a    = document.createElement('a');
-      a.href     = blobUrl;
-      a.download = `${companyName}-Brochure.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-
-      // Free memory once the browser has had a chance to start the download
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
-    } catch (err) {
-      console.error('Brochure download failed:', err);
-      setDownloadError(true);
-
-      // Fallback: open in a new tab so the user can at least view/save it
-      // manually (e.g. Ctrl/Cmd+S), even if CORS or headers blocked the blob fetch.
-      window.open(brochureUrl, '_blank', 'noopener,noreferrer');
-
-      // Clear the error indicator after a few seconds
-      setTimeout(() => setDownloadError(false), 4000);
-    } finally {
-      setIsDownloading(false);
-    }
-  }, [brochureUrl, companyName, isDownloading]);
+  const handleBrochure = useCallback(() => {
+    const a    = document.createElement('a');
+    a.href     = brochureUrl;
+    a.download = `${companyName}-Brochure.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }, [brochureUrl, companyName]);
 
   // ── Start chat (welcome → workflow) ────────────────────────────────────────
 
@@ -470,25 +429,11 @@ export default function ChatbotWidget({
 
         {/* Brochure */}
         <button onClick={handleBrochure}
-          disabled={isDownloading}
-          style={{
-            ...sideBtn,
-            backgroundColor: downloadError ? '#dc2626' : '#e67e22',
-            cursor: isDownloading ? 'wait' : 'pointer',
-          }}
+          style={{ ...sideBtn, backgroundColor: '#e67e22' }}
           onMouseEnter={expandBtn} onMouseLeave={collapseBtn}
-          aria-label={downloadError ? 'Download failed — opening in new tab instead' : brochureLabel}
-          title={downloadError ? 'Download failed — opened in a new tab instead' : brochureLabel}>
-          {isDownloading ? (
-            <Loader2 size={20} style={{ flexShrink: 0, animation: 'kavSpin 0.8s linear infinite' }} />
-          ) : downloadError ? (
-            <AlertCircle size={20} style={{ flexShrink: 0 }} />
-          ) : (
-            <Download size={20} style={{ flexShrink: 0 }} />
-          )}
-          <span className="btn-label" style={labelStyle}>
-            {isDownloading ? 'Downloading…' : downloadError ? 'Opened in new tab' : brochureLabel}
-          </span>
+          aria-label={brochureLabel} title={brochureLabel}>
+          <Download size={20} style={{ flexShrink: 0 }} />
+          <span className="btn-label" style={labelStyle}>{brochureLabel}</span>
         </button>
 
         {/* WhatsApp */}
