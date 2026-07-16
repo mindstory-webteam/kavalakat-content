@@ -260,6 +260,24 @@ function getAboutGalleryImages(about: ServiceAbout | null): string[] {
 }
 
 /* ─────────────────────────────────────────────────
+   TESTIMONIAL LETTER-AVATAR HELPERS
+───────────────────────────────────────────────── */
+function getInitials(name: string): string {
+  return name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0].toUpperCase())
+    .join('')
+}
+
+const AVATAR_COLORS = ['#1a1a1a', '#2d5f4c', '#7a3b2e', '#3b4a7a', '#6b4a8a']
+function getAvatarColor(name: string): string {
+  const idx = name.split('').reduce((sum, ch) => sum + ch.charCodeAt(0), 0) % AVATAR_COLORS.length
+  return AVATAR_COLORS[idx]
+}
+
+/* ─────────────────────────────────────────────────
    COUNT-UP HOOK
 ───────────────────────────────────────────────── */
 /* ─────────────────────────────────────────────────
@@ -401,21 +419,18 @@ const AliteEnclavesPage = () => {
       text: 'Alite Enclaves gave us the comfort of home while on a long project assignment in Thrissur.',
       author: 'Rohit Sharma',
       role: 'Project Manager, Kochi',
-      img: '/assets/new-images/icon-person/5856.jpg',
     },
     {
       quote: 'Best Service Apartments in Thrissur',
       text: 'Stayed here for a week with family during the Thrissur Pooram festival. Excellent location.',
       author: 'Anitha Nair',
       role: 'Family Traveller, Bangalore',
-      img: '/assets/new-images/icon-person/5856.jpg',
     },
     {
       quote: 'Highly Recommended for Long Stays',
       text: 'The fully furnished apartment with kitchen facilities made our two-week stay very comfortable.',
       author: 'James Mathew',
       role: 'Corporate Guest, Chennai',
-      img: '/assets/new-images/icon-person/5856.jpg',
     },
   ]
 
@@ -960,8 +975,11 @@ const AliteEnclavesPage = () => {
                     <span className="d-block fw-bold mb-2">{testimonials[currentSlide].quote}</span>
                     <p className="mb-4">{testimonials[currentSlide].text}</p>
                     <div className="author-area d-flex align-items-center gap-3">
-                      <div className="author-img">
-                        <Image width={50} height={50} src={testimonials[currentSlide].img} alt={testimonials[currentSlide].author} className="rounded-circle" />
+                      <div
+                        className="author-img letter-avatar"
+                        style={{ background: getAvatarColor(testimonials[currentSlide].author) }}
+                      >
+                        {getInitials(testimonials[currentSlide].author)}
                       </div>
                       <div className="author-content">
                         <h5 className="mb-0">{testimonials[currentSlide].author}</h5>
@@ -1092,6 +1110,21 @@ const AliteEnclavesPage = () => {
         .alite-video-thumb.active .alite-thumb-title { color: #fff; }
         .alite-video-dot { width: 10px; height: 10px; background: rgba(255,255,255,0.2); border: none; padding: 0; cursor: pointer; transition: background 0.2s; }
         .alite-video-dot.active { background: #fff; }
+
+        /* ── Testimonial letter avatar ── */
+        .letter-avatar {
+          width: 50px;
+          height: 50px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #fff;
+          font-weight: 700;
+          font-size: 1rem;
+          letter-spacing: 0.5px;
+          flex-shrink: 0;
+        }
 
         /* ── Animations ── */
         .testimonial-card { animation: fadeSlide 0.6s ease; }

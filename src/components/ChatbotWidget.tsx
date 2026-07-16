@@ -97,7 +97,7 @@ export default function ChatbotWidget({
   phoneNumber    = '0487 244 0380',
   email          = 'contact@kavalakat.com',
   whatsappNumber = '916238000000',
-  brochureUrl    = '/kavalakat-brochure.pdf',
+  brochureUrl    = '/Kavalakat-Brochure.pdf',
   brochureLabel  = 'Download Brochure',
   logoUrl        = '',
 }: ChatbotWidgetProps) {
