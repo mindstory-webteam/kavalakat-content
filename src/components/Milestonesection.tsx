@@ -232,7 +232,8 @@ const MilestoneSection: React.FC = () => {
           line-height: 1.78;
         }
 
-        /* Spine */
+        /* Spine ─ FIX: give it an explicit low z-index and keep it non-interactive
+           so it can never paint above card/text content. */
         .mil-wrap {
           position: relative;
           max-width: 1160px;
@@ -252,6 +253,8 @@ const MilestoneSection: React.FC = () => {
             #d0dff0 95%,
             transparent
           );
+          z-index: 0;
+          pointer-events: none;
         }
 
         /* Row */
@@ -269,6 +272,16 @@ const MilestoneSection: React.FC = () => {
         .mil-row:nth-child(even) .mil-card-col { grid-column: 3; grid-row: 1; }
         .mil-row:nth-child(even) .mil-body-col { grid-column: 1; grid-row: 1; }
         .mil-node-col { grid-column: 2; grid-row: 1; }
+
+        /* FIX: every grid column needs min-width: 0, otherwise grid items
+           refuse to shrink below their content's intrinsic width. That's what
+           was forcing the columns to overflow into / behind the center spine
+           at in-between (tablet/narrow-laptop) viewport widths. */
+        .mil-card-col,
+        .mil-body-col,
+        .mil-node-col {
+          min-width: 0;
+        }
 
         /* Node */
         .mil-node-col {
@@ -334,7 +347,9 @@ const MilestoneSection: React.FC = () => {
         }
         .mil-row.mil-in .mil-year { opacity: 1; transform: translateY(0) scale(1); }
 
-        /* Dashed connector */
+        /* Dashed connector ─ FIX: z-index lowered below card/body content,
+           and width calc clamped so it can never compute negative/oversized
+           at narrow widths and bleed under the text. */
         .mil-dash {
           position: absolute;
           top: 26px; height: 1px;
@@ -344,15 +359,17 @@ const MilestoneSection: React.FC = () => {
             transparent 4px, transparent 10px
           );
           width: 0;
+          max-width: calc(50% - 80px);
           transition: width 0.65s cubic-bezier(0.4,0,0.2,1) 0.3s;
           z-index: 1;
+          pointer-events: none;
         }
         .mil-row:nth-child(odd)  .mil-dash { left:  calc(50% + 44px); }
         .mil-row:nth-child(even) .mil-dash { right: calc(50% + 44px); }
-        .mil-row.mil-in .mil-dash { width: calc(50% - 80px); }
+        .mil-row.mil-in .mil-dash { width: clamp(0px, calc(50% - 80px), 100%); }
 
         /* Image card */
-        .mil-card-col { position: relative; }
+        .mil-card-col { position: relative; z-index: 2; }
         .mil-card {
           position: relative;
           border-radius: 12px;
@@ -417,8 +434,15 @@ const MilestoneSection: React.FC = () => {
         }
         .mil-row.mil-in .mil-card::after { transform: scaleX(1); }
 
-        /* Text body */
-        .mil-body-col { padding: 0 16px; }
+        /* Text body ─ FIX: raised above the spine/dash/node so text always
+           wins if anything overlaps, plus a solid background so a stray
+           dash under it is invisible even mid-transition. */
+        .mil-body-col {
+          padding: 0 16px;
+          position: relative;
+          z-index: 4;
+          background: #f8f9fc;
+        }
         .mil-row:nth-child(even) .mil-body-col { text-align: right; }
 
         .mil-body-col h3 {
@@ -527,8 +551,15 @@ const MilestoneSection: React.FC = () => {
 
         /* ── Responsive ─────────────────────────────────────────────── */
 
-        /* Large tablets / small laptops — keep two columns, ease spacing */
-        @media (max-width: 1100px) {
+        /* FIX: the old layout kept the 2-column grid (with a fixed 88px
+           center + dashed connector) all the way down to 900px. In the
+           900px–1180px band the two 1fr columns got squeezed narrow enough
+           that card/text content pushed up against — and sometimes under —
+           the center spine/dash, which is exactly the "dotted line over the
+           text" bug. The grid now only applies above 1180px; everything at
+           or below that width uses the clean single-column stacked layout,
+           so the spine/dash never has to share space with squeezed text. */
+        @media (min-width: 901px) and (max-width: 1180px) {
           .mil-wrap { padding: 0 24px; }
           .mil-row { margin-bottom: 72px; }
           .mil-row:nth-child(odd)  .mil-card { margin-right: 20px; }
@@ -538,8 +569,10 @@ const MilestoneSection: React.FC = () => {
 
         /* Tablet & mobile — STACKED CARDS (image -> marker -> text), downward.
            Uses flex column so the grid-row / grid-column rules above are
-           ignored entirely and can no longer cause the overlap bug. */
-        @media (max-width: 900px) {
+           ignored entirely and can no longer cause the overlap bug.
+           FIX: breakpoint raised from 900px to 1180px to close the gap
+           where squeezed grid columns were overlapping the spine/dash. */
+        @media (max-width: 1180px) {
           .mil-row {
             display: flex !important;
             flex-direction: column;
@@ -577,6 +610,7 @@ const MilestoneSection: React.FC = () => {
           .mil-row:nth-child(even) .mil-body-col {
             text-align: left !important;
             padding: 0;
+            background: transparent;
           }
           .mil-chips,
           .mil-row:nth-child(even) .mil-chips { justify-content: flex-start; }
