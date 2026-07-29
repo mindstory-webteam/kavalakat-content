@@ -38,7 +38,7 @@ export default function Home() {
   brandColor="#0077be"
   brandName="Kavalakat AI"
   companyName="Kavalakat"
-  whatsappNumber="916238000000"
+  whatsappNumber="+919946101649"
   phoneNumber="0487 244 0380"
   email="info@kavalakat.com"
 />
