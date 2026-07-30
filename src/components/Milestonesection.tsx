@@ -664,8 +664,7 @@ const MilestoneSection: React.FC = () => {
           >
             <h2>Our <span>Journey</span></h2>
             <p>
-              From a single cement shop in 1976 to a multi-sector group — every
-              milestone is a chapter in a story built on trust.
+             From a single cement shop in 1976 to a diversified multi-sector group, every milestone is a chapter in a story built on trust.
             </p>
           </div>
         </div>

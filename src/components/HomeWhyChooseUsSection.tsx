@@ -13,7 +13,7 @@ const HomeWhyChooseUsSection: React.FC = () => {
                         <div className="col-xl-6 col-lg-8 wow animate fadeInLeft" data-wow-delay="200ms" data-wow-duration="1500ms">
                             <div className="section-title two">
                                 
-                                <h2>Why We’re the Right Choice Industry</h2>
+                                <h2>Why We're the Right Choice for the Construction Industry</h2>
                             </div>
                         </div>
                         {/* <div className="col-lg-3 d-flex justify-content-lg-end btn_wrapper">

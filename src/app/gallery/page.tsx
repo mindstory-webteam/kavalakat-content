@@ -91,7 +91,7 @@ const GalleryPage = () => {
             <InnerPageHeader />
             <Breadcrumb
                 title="Gallery"
-                subtitle="Explore Our Collection of Industrial & Manufacturing Excellence."
+                subtitle="Explore Our Industrial & Manufacturing Excellence"
                 image="/assets/new-images/new-images/about-imges/gallery.webp"
             />
 

@@ -129,7 +129,7 @@ const HomepageBlogSection: React.FC = () => {
         >
           <div className="col-lg-5">
             <div className="section-title">
-              <h2>Expert Insights for Builders</h2>
+              <h2> Market Trend & Analyst Behind The Scene Of Industry</h2>
             </div>
           </div>
           <div className="col-lg-3 d-flex justify-content-lg-end">
