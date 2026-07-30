@@ -26,7 +26,7 @@ const AboutPage: React.FC = () => {
   return (
     <>
       <InnerPageHeader />
-            <Breadcrumb title="About Us" subtitle="Our Story of Excellence Built on."  image="/assets/new-images/new-images/about-bm.webp"  />
+            <Breadcrumb title="About Us" subtitle="Our Story of Excellence is Built on Trust, Quality, and Lasting Relationships."  image="/assets/new-images/new-images/about-bm.webp"  />
             <HomePageAboutSection />
             <HomeWhyChooseUsSection />
             <HomePageAboutFeatureSection />
