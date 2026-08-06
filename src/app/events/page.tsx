@@ -47,153 +47,6 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://api.kavalakat.com/a
 const FALLBACK_IMAGE = '/assets/new-images/projects/project-1.jpg'
 const FALLBACK_LOGO  = '/assets/new-images/clints/1 (1).jpg'
 
-// ─── Dummy fallback data ────────────────────────────────────────────────────
-const DUMMY_EVENTS: EventItem[] = [
-  {
-    id: 1,
-    title: 'Kerala Build Expo 2026',
-    description:
-      "Kavalakat's flagship stall at Kerala's largest construction materials expo, showcasing our latest range of TMT bars, cement and plumbing solutions to over 5,000 visitors from across the state.",
-    organizer: 'Kavalakat Group',
-    organizer_logo: '/assets/new-images/clints/1 (1).jpg',
-    organizer_logo_url: '',
-    venue: 'International Trade Fair Complex',
-    location: 'Kochi, Kerala',
-    event_date: '2026-08-14',
-    event_time: '10:00 AM - 6:00 PM',
-    tag: 'Expo',
-    image: '/assets/new-images/projects/project-1.jpg',
-    image_url: '',
-    images: [
-      '/assets/new-images/projects/project-1.jpg',
-      '/assets/new-images/projects/project-2.jpg',
-      '/assets/new-images/projects/project-3.jpg',
-    ],
-    registration_url: '/contact',
-    is_featured: true,
-    created_at: '2026-06-01',
-  },
-  {
-    id: 2,
-    title: 'Contractor Partnership Meet',
-    description:
-      'An exclusive evening for our valued contractor partners, recognising long-standing collaborations and unveiling new bulk-order pricing tiers and credit schemes for the upcoming financial year.',
-    organizer: 'Kavalakat Group',
-    organizer_logo: '/assets/new-images/clints/1 (1).jpg',
-    organizer_logo_url: '',
-    venue: 'Hotel Crowne Plaza',
-    location: 'Kozhikode, Kerala',
-    event_date: '2026-07-02',
-    event_time: '5:30 PM onwards',
-    tag: 'Networking',
-    image: '/assets/new-images/projects/project-2.jpg',
-    image_url: '',
-    images: [
-      '/assets/new-images/projects/project-2.jpg',
-      '/assets/new-images/projects/project-4.jpg',
-      '/assets/new-images/projects/project-1.jpg',
-    ],
-    registration_url: '/contact',
-    is_featured: false,
-    created_at: '2026-05-20',
-  },
-  {
-    id: 3,
-    title: 'Site Safety & Materials Workshop',
-    description:
-      'A hands-on workshop for site engineers and supervisors covering safe handling and storage of construction materials, quality checks for steel and cement, and best practices for site logistics.',
-    organizer: 'Kavalakat Academy',
-    organizer_logo: '/assets/new-images/clints/1 (1).jpg',
-    organizer_logo_url: '',
-    venue: 'Kavalakat Training Centre',
-    location: 'Thrissur, Kerala',
-    event_date: '2026-06-25',
-    event_time: '9:30 AM - 1:00 PM',
-    tag: 'Workshop',
-    image: '/assets/new-images/projects/project-3.jpg',
-    image_url: '',
-    images: [
-      '/assets/new-images/projects/project-3.jpg',
-      '/assets/new-images/projects/project-5.jpg',
-    ],
-    registration_url: '/contact',
-    is_featured: true,
-    created_at: '2026-05-10',
-  },
-  {
-    id: 4,
-    title: 'Republic Day CSR Drive',
-    description:
-      "Our annual community outreach programme — distributing essential building materials and toolkits to families rebuilding homes affected by last year's monsoon floods, in association with local panchayats.",
-    organizer: 'Kavalakat Foundation',
-    organizer_logo: '/assets/new-images/clints/1 (1).jpg',
-    organizer_logo_url: '',
-    venue: 'Chalakudy Panchayat Grounds',
-    location: 'Thrissur, Kerala',
-    event_date: '2026-01-26',
-    event_time: '8:00 AM - 12:00 PM',
-    tag: 'CSR',
-    image: '/assets/new-images/projects/project-4.jpg',
-    image_url: '',
-    images: [
-      '/assets/new-images/projects/project-4.jpg',
-      '/assets/new-images/projects/project-6.jpg',
-      '/assets/new-images/projects/project-2.jpg',
-    ],
-    registration_url: '/contact',
-    is_featured: false,
-    created_at: '2025-12-15',
-  },
-  {
-    id: 5,
-    title: 'New Product Launch: EcoBlend Cement',
-    description:
-      'The unveiling of our new low-carbon EcoBlend cement range, featuring live demonstrations, technical specification sessions and a Q&A with our materials engineering team.',
-    organizer: 'Kavalakat Group',
-    organizer_logo: '/assets/new-images/clints/1 (1).jpg',
-    organizer_logo_url: '',
-    venue: 'Kavalakat Head Office Auditorium',
-    location: 'Palakkad, Kerala',
-    event_date: '2026-09-05',
-    event_time: '11:00 AM - 2:00 PM',
-    tag: 'Product Launch',
-    image: '/assets/new-images/projects/project-5.jpg',
-    image_url: '',
-    images: [
-      '/assets/new-images/projects/project-5.jpg',
-      '/assets/new-images/projects/project-1.jpg',
-      '/assets/new-images/projects/project-3.jpg',
-    ],
-    registration_url: '/contact',
-    is_featured: false,
-    created_at: '2026-06-05',
-  },
-  {
-    id: 6,
-    title: 'Annual Dealers Conference 2025',
-    description:
-      'A retrospective of an outstanding year — our annual conference brought together over 150 dealers from across Kerala for award presentations, strategy sessions and a celebratory dinner.',
-    organizer: 'Kavalakat Group',
-    organizer_logo: '/assets/new-images/clints/1 (1).jpg',
-    organizer_logo_url: '',
-    venue: 'Lulu Convention Centre',
-    location: 'Kochi, Kerala',
-    event_date: '2025-11-18',
-    event_time: '4:00 PM onwards',
-    tag: 'Conference',
-    image: '/assets/new-images/projects/project-6.jpg',
-    image_url: '',
-    images: [
-      '/assets/new-images/projects/project-6.jpg',
-      '/assets/new-images/projects/project-2.jpg',
-      '/assets/new-images/projects/project-4.jpg',
-    ],
-    registration_url: '/contact',
-    is_featured: false,
-    created_at: '2025-11-01',
-  },
-]
-
 // ─── Date helpers ───────────────────────────────────────────────────────────
 function getDateParts(dateStr: string) {
   const d = new Date(dateStr)
@@ -549,19 +402,18 @@ const Page = () => {
     setError(null)
     try {
       const res = await fetch(`${API_BASE}/events/`)
-      // On any non-ok response (404, 500, etc.) silently fall back to
-      // sample data — no throw, so no console error overlay in Next.js.
       if (!res.ok) {
-        setEvents(sortEvents(DUMMY_EVENTS))
+        setEvents([])
+        setError('Unable to load events right now.')
         return
       }
       const raw: EventsApiResponse = await res.json()
       const items = extractEvents(raw)
-      const finalItems = items.length > 0 ? items : DUMMY_EVENTS
-      setEvents(sortEvents(finalItems))
+      setEvents(sortEvents(items))
     } catch {
-      // Network-level failure (offline, CORS, etc.) — also silent fallback.
-      setEvents(sortEvents(DUMMY_EVENTS))
+      // Network-level failure (offline, CORS, etc.)
+      setEvents([])
+      setError('Unable to load events right now.')
     } finally {
       setLoading(false)
     }
