@@ -23,15 +23,25 @@ interface GalleryItem {
 // 1. GalleryItem[]
 // 2. { results: GalleryItem[] }
 // 3. { data: GalleryItem[], success: boolean, pagination: {...} }
+interface GalleryPagination {
+    total: number
+    pages: number
+    current_page: number
+    page_size: number
+    next: string | null
+    previous: string | null
+}
+
 type GalleryApiResponse =
     | GalleryItem[]
     | { results: GalleryItem[] }
-    | { data: GalleryItem[]; success: boolean; pagination: unknown }
+    | { data: GalleryItem[]; success: boolean; pagination?: GalleryPagination }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://api.kavalakat.com/api'
 const DELAYS = ['200ms', '400ms', '600ms', '800ms', '800ms', '600ms']
-const IMAGES_PER_PAGE = 6
+const MAX_PAGES = 20 // safety cap so a bad "next" link can't loop forever
+const IMAGES_PER_PAGE = 9 // how many images show per pagination page in the UI
 
 function extractItems(raw: GalleryApiResponse): GalleryItem[] {
     if (Array.isArray(raw)) return raw
@@ -40,22 +50,39 @@ function extractItems(raw: GalleryApiResponse): GalleryItem[] {
     return []
 }
 
+function extractNextUrl(raw: GalleryApiResponse): string | null {
+    if (!Array.isArray(raw) && 'pagination' in raw && raw.pagination) {
+        return raw.pagination.next ?? null
+    }
+    return null
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 const GalleryPage = () => {
-    const [currentPage, setCurrentPage] = useState(1)
     const [galleryImages, setGalleryImages] = useState<GalleryItem[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
+    const [currentPage, setCurrentPage] = useState(1)
 
     const fetchGallery = useCallback(async () => {
         setLoading(true)
         setError(null)
         try {
-            const res = await fetch(`${API_BASE}/gallery/`)
-            if (!res.ok) throw new Error(`HTTP ${res.status}`)
-            const raw: GalleryApiResponse = await res.json()
+            let url: string | null = `${API_BASE}/gallery/`
+            let allItems: GalleryItem[] = []
+            let pageCount = 0
 
-            const items = extractItems(raw)
+            while (url && pageCount < MAX_PAGES) {
+                const res = await fetch(url)
+                if (!res.ok) throw new Error(`HTTP ${res.status}`)
+                const raw: GalleryApiResponse = await res.json()
+
+                allItems = allItems.concat(extractItems(raw))
+                url = extractNextUrl(raw)
+                pageCount += 1
+            }
+
+            const items = allItems
                 .filter(item => item.is_active !== false)
                 .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
 
@@ -141,7 +168,7 @@ const GalleryPage = () => {
                         </div>
                     )}
 
-                    {/* ── Grid ── */}
+                    {/* ── Grid: current page of images ── */}
                     {!loading && !error && currentImages.length > 0 && (
                         <>
                             <div className="row gy-5 mb-70">
