@@ -15,7 +15,7 @@ const siteUrl = "https://kavalakat.com";
 const siteTitle = "Kavalakat - Factory & Industry Website.";
 const siteDescription =
   "Kavalakat delivers reliable factory and industrial solutions, from manufacturing support to end-to-end project execution.";
-const ogImage = "/assets/new-images/og-image.jpg";
+const ogImage = "/assets/new-images/fav-1.png";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
