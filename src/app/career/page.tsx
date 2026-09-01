@@ -6,6 +6,12 @@ import React, { useState, useEffect } from 'react'
 import Footer1 from '@/components/Footer'
 import Breadcrumb from '@/components/common/Breadcrumb'
 
+// ─── SEO ──────────────────────────────────────────────────────────────────────
+const META_TITLE = "Careers at Kavalakat | Join Kerala's Leading Material Supplier"
+const META_DESC =
+    "Explore career opportunities at Kavalakat Group - join a growing team in Kerala's construction material distribution industry."
+const CANONICAL = 'https://www.kavalakat.com/career'
+
 const API_BASE = process.env.NEXT_PUBLIC_REACT_APP_API_URL || 'https://api.kavalakat.com/api'
 
 interface Job {
@@ -221,6 +227,16 @@ const CareerPage = () => {
 
     return (
         <>
+            {/* ── SEO meta ── */}
+            <title>{META_TITLE}</title>
+            <meta name="description" content={META_DESC} />
+            <link rel="canonical" href={CANONICAL} />
+            <meta property="og:title" content={META_TITLE} />
+            <meta property="og:description" content={META_DESC} />
+            <meta property="og:url" content={CANONICAL} />
+            <meta property="og:site_name" content="Kavalakat" />
+            <meta property="og:type" content="website" />
+
             <InnerPageHeader />
             <Breadcrumb
                 title="Careers"

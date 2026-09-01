@@ -1,9 +1,9 @@
-
 import FooterTop from '@/components/FooterTop'
 import Footer1 from '@/components/Footer'
 import InnerPageHeader from '@/components/InnerPageHeader'
 
-import React  from "react";
+import React from "react";
+import type { Metadata } from 'next';
 
 import Image from 'next/image';
 import Breadcrumb from '@/components/common/Breadcrumb';
@@ -11,8 +11,25 @@ import Breadcrumb from '@/components/common/Breadcrumb';
 import HomeProcessSection from '@/components/HomeProcessSection';
 import SalesNetworkSection from '@/components/SalesNetworkSection';
 
+export const metadata: Metadata = {
+  title: "Our Strengths | Kavalakat Steel & Cement Distribution Network",
+  description:
+    "See Kavalakat's sales network in numbers: 10,000+ MT steel, 11,000+ MT cement & 4,500 MT Birla White supplied monthly across Kerala.",
+  alternates: {
+    canonical: "https://www.kavalakat.com/our-strengths",
+  },
+  openGraph: {
+    title: "Our Strengths | Kavalakat Steel & Cement Distribution Network",
+    description:
+      "See Kavalakat's sales network in numbers: 10,000+ MT steel, 11,000+ MT cement & 4,500 MT Birla White supplied monthly across Kerala.",
+    url: "https://www.kavalakat.com/our-strengths",
+    siteName: "Kavalakat",
+    type: "website",
+  },
+};
 
-const OurProcessPage:React.FC = () => {
+const OurProcessPage: React.FC = () => {
+
 
     return (
         <>

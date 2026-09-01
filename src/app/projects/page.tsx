@@ -8,6 +8,12 @@ import Breadcrumb from '@/components/common/Breadcrumb'
 import Image from 'next/image'
 import Link from 'next/link'
 
+// ─── SEO ──────────────────────────────────────────────────────────────────────
+const META_TITLE = 'Our Projects | Kavalakat Infrastructure & Government Supply'
+const META_DESC =
+  '500+ projects completed across Kerala, from metro rail corridors to government hospitals. See how Kavalakat supplies major infrastructure builds.'
+const CANONICAL = 'https://www.kavalakat.com/projects'
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Project {
   id: number
@@ -161,6 +167,16 @@ const Page = () => {
 
   return (
     <>
+      {/* ── SEO meta ── */}
+      <title>{META_TITLE}</title>
+      <meta name="description" content={META_DESC} />
+      <link rel="canonical" href={CANONICAL} />
+      <meta property="og:title" content={META_TITLE} />
+      <meta property="og:description" content={META_DESC} />
+      <meta property="og:url" content={CANONICAL} />
+      <meta property="og:site_name" content="Kavalakat" />
+      <meta property="og:type" content="website" />
+
       <InnerPageHeader />
       <Breadcrumb
         title="Our Projects"

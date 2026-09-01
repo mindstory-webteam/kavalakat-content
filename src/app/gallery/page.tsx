@@ -7,6 +7,12 @@ import Footer1 from '@/components/Footer'
 import Breadcrumb from '@/components/common/Breadcrumb'
 import Image from 'next/image'
 
+// ─── SEO ──────────────────────────────────────────────────────────────────────
+const META_TITLE = 'Gallery | Kavalakat Construction & Industrial Projects'
+const META_DESC =
+    "Browse photos of Kavalakat's steel, cement and construction material operations, deliveries and completed projects across Kerala."
+const CANONICAL = 'https://www.kavalakat.com/gallery'
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface GalleryItem {
     id: number
@@ -115,6 +121,16 @@ const GalleryPage = () => {
 
     return (
         <>
+            {/* ── SEO meta ── */}
+            <title>{META_TITLE}</title>
+            <meta name="description" content={META_DESC} />
+            <link rel="canonical" href={CANONICAL} />
+            <meta property="og:title" content={META_TITLE} />
+            <meta property="og:description" content={META_DESC} />
+            <meta property="og:url" content={CANONICAL} />
+            <meta property="og:site_name" content="Kavalakat" />
+            <meta property="og:type" content="website" />
+
             <InnerPageHeader />
             <Breadcrumb
                 title="Gallery"
@@ -204,8 +220,8 @@ const GalleryPage = () => {
                                             <ul className="paginations">
                                                 {/* Prev */}
                                                 <li className="page-item paginations-button">
-                                                    <a
-                                                        href="#"
+                                                    
+                                                      <a  href="#"
                                                         onClick={e => { e.preventDefault(); if (currentPage > 1) goToPage(currentPage - 1) }}
                                                         style={{ opacity: currentPage === 1 ? 0.4 : 1, cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}
                                                         aria-label="Previous page"
@@ -219,8 +235,8 @@ const GalleryPage = () => {
                                                 {/* Pages */}
                                                 {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
                                                     <li key={page} className={`page-item ${currentPage === page ? 'active' : ''}`}>
-                                                        <a
-                                                            href="#"
+                                                        
+                                                         <a   href="#"
                                                             onClick={e => { e.preventDefault(); goToPage(page) }}
                                                             aria-label={`Page ${page}`}
                                                             aria-current={currentPage === page ? 'page' : undefined}
@@ -232,8 +248,8 @@ const GalleryPage = () => {
 
                                                 {/* Next */}
                                                 <li className="page-item paginations-button">
-                                                    <a
-                                                        href="#"
+                                                    
+                                                    <a    href="#"
                                                         onClick={e => { e.preventDefault(); if (currentPage < totalPages) goToPage(currentPage + 1) }}
                                                         style={{ opacity: currentPage === totalPages ? 0.4 : 1, cursor: currentPage === totalPages ? 'not-allowed' : 'pointer' }}
                                                         aria-label="Next page"

@@ -8,6 +8,12 @@ import Breadcrumb from '@/components/common/Breadcrumb'
 import Image from 'next/image'
 import Link from 'next/link'
 
+// ─── SEO ──────────────────────────────────────────────────────────────────────
+const META_TITLE = 'Events | Kavalakat Industry Expos & Construction Meets'
+const META_DESC =
+  "See Kavalakat's involvement in construction industry expos, workshops and community events connecting builders and partners across Kerala."
+const CANONICAL = 'https://www.kavalakat.com/events'
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface EventItem {
   id: number
@@ -453,6 +459,16 @@ const Page = () => {
 
   return (
     <>
+      {/* ── SEO meta ── */}
+      <title>{META_TITLE}</title>
+      <meta name="description" content={META_DESC} />
+      <link rel="canonical" href={CANONICAL} />
+      <meta property="og:title" content={META_TITLE} />
+      <meta property="og:description" content={META_DESC} />
+      <meta property="og:url" content={CANONICAL} />
+      <meta property="og:site_name" content="Kavalakat" />
+      <meta property="og:type" content="website" />
+
       <InnerPageHeader />
       <Breadcrumb
         title="Our Events"

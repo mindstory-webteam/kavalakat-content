@@ -9,6 +9,25 @@ import FooterTop from '@/components/FooterTop'
 import Footer1 from '@/components/Footer'
 import Breadcrumb from '@/components/common/Breadcrumb'
 
+// ─── SEO ──────────────────────────────────────────────────────────────────────
+
+const META_TITLE = 'Products | TMT Steel, Cement, Paints & Chemicals | Kavalakat'
+const META_DESC  = "Explore Kavalakat's full product range - TMT steel bars, cement, white cement, Dulux paints and construction chemicals - trusted across Kerala."
+const CANONICAL  = 'https://www.kavalakat.com/product'
+
+const SeoTags = () => (
+  <>
+    <title>{META_TITLE}</title>
+    <meta name="description" content={META_DESC} />
+    <link rel="canonical" href={CANONICAL} />
+    <meta property="og:title" content={META_TITLE} />
+    <meta property="og:description" content={META_DESC} />
+    <meta property="og:url" content={CANONICAL} />
+    <meta property="og:site_name" content="Kavalakat" />
+    <meta property="og:type" content="website" />
+  </>
+)
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Category {
@@ -232,6 +251,7 @@ const ProductPage = () => {
   // ── Loading ───────────────────────────────────────────────────────────────
   if (loading) return (
     <>
+      <SeoTags />
       <InnerPageHeader />
       <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div className="kv-loader"><div /><div /><div /></div>
@@ -243,6 +263,7 @@ const ProductPage = () => {
 
   if (error) return (
     <>
+      <SeoTags />
       <InnerPageHeader />
       <div className="container pt-120 mb-120 text-center">
         <h2>Something went wrong</h2>
@@ -257,6 +278,8 @@ const ProductPage = () => {
 
   return (
     <>
+      <SeoTags />
+
       <InnerPageHeader />
 
       <Breadcrumb

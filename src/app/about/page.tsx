@@ -15,30 +15,40 @@ import MilestoneSection from "@/components/Milestonesection";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "About Kavalakat Group | 50 Years of Construction Material Excellence in Kerala",
-  description: "Learn how Kavalakat Group grew from a cement trading shop in 1975 to Kerala's leading multi-division construction material supplier with 245 employees and 440+ retailers.",
- 
+  title: "About Kavalakat | 50 Years of Trusted Material Supply in Kerala",
+  description:
+    "Kavalakat Group grew from a 1975 cement trading shop into Kerala's leading construction material distributor, serving 770+ retailers statewide.",
+  alternates: {
+    canonical: "https://www.kavalakat.com/about",
+  },
+  openGraph: {
+    title: "About Kavalakat | 50 Years of Trusted Material Supply in Kerala",
+    description:
+      "Kavalakat Group grew from a 1975 cement trading shop into Kerala's leading construction material distributor, serving 770+ retailers statewide.",
+    url: "https://www.kavalakat.com/about",
+    siteName: "Kavalakat",
+    type: "website",
+  },
 };
-
-
 
 const AboutPage: React.FC = () => {
   return (
     <>
       <InnerPageHeader />
-            <Breadcrumb title="About Us" subtitle="Our Story of Excellence is Built on Trust, Quality, and Lasting Relationships."  image="/assets/new-images/new-images/about-bm.webp"  />
-            <HomePageAboutSection />
-            <HomeWhyChooseUsSection />
-            <HomePageAboutFeatureSection />
-             <HomaPageVideoSection />
+      <Breadcrumb
+        title="About Us"
+        subtitle="Our Story of Excellence is Built on Trust, Quality, and Lasting Relationships."
+        image="/assets/new-images/new-images/about-bm.webp"
+      />
+      <HomePageAboutSection />
+      <HomeWhyChooseUsSection />
+      <HomePageAboutFeatureSection />
+      <HomaPageVideoSection />
       <HomePageCounterSection />
-     
       <HomePageTeamSection />
       <HomepageBlogSection />
       <FooterTop />
       <Footer />
-
-     
     </>
   );
 };
